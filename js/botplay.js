@@ -2,7 +2,7 @@ import { Chess } from '../lib/chess.js';
 import { Board } from './board.js';
 import { BOTS, botMove } from './bots.js';
 import { getEngine } from './engine.js';
-import { esc, store, moveListHtml, resultText, playSound, toast } from './ui.js';
+import { esc, store, moveListHtml, resultText, playSound, moveSound, toast } from './ui.js';
 import { openAnalysis } from './analysis-view.js';
 import { t, tx } from './i18n.js';
 
@@ -123,7 +123,7 @@ export function renderBotGame(root, id, color) {
     thinking.classList.add('hidden');
     if (uci) {
       const mv = chess.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
-      playSound(mv.captured ? 'capture' : 'move');
+      moveSound(mv);
     }
     if (!checkEnd()) redraw();
   }
@@ -131,7 +131,7 @@ export function renderBotGame(root, id, color) {
   board.onMove = (from, to, promotion) => {
     let mv;
     try { mv = chess.move({ from, to, promotion }); } catch { redraw(); return; }
-    playSound(mv.captured ? 'capture' : 'move');
+    moveSound(mv);
     if (!checkEnd()) { redraw(); botTurn(); }
   };
 

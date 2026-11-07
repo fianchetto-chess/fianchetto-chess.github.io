@@ -2,7 +2,7 @@ import { Chess } from '../lib/chess.js';
 import { Board } from './board.js';
 import { getEngine } from './engine.js';
 import { analyzeGame, MARKS, winPercent, evalText } from './analysis.js';
-import { esc, moveListHtml, store, toast } from './ui.js';
+import { esc, moveListHtml, store, toast, moveSound } from './ui.js';
 import { t } from './i18n.js';
 
 let pending = null;
@@ -16,35 +16,202 @@ export function openAnalysis(data) {
 export function renderAnalysis(root) {
   const data = pending;
   pending = null;
-  if (!data) return renderInput(root);
+  if (!data) return renderBoard(root, store.get('anBoard', {}));
   run(root, data);
 }
 
-function renderInput(root) {
-  const last = store.get('lastPgn', '');
+// ---------- Доска для анализа: ходы за обе стороны + движок в реальном времени ----------
+const uciMv = (u) => ({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] });
+
+function renderBoard(root, init = {}) {
   root.innerHTML = `
-    <h1>${t('an.title')}</h1>
-    <p class="lead">${t('an.lead')}</p>
-    <div class="panel">
-      <textarea id="pgn" rows="8" placeholder="1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 4. Ng5 d5 ...">${esc(last)}</textarea>
-      <div class="btn-row">
-        <button class="btn primary" id="go">🔍 ${t('an.go')}</button>
+    <div class="analysis-head"><h1>${t('an.boardTitle')}</h1></div>
+    <p class="lead">${t('an.boardLead')}</p>
+    <div class="game-layout">
+      <div class="board-col">
+        <div class="board-with-bar">
+          <div class="evalbar"><div class="evalbar-white" style="height:50%"></div><span class="evalbar-text"></span></div>
+          <div id="fboard"></div>
+        </div>
+        <div class="btn-row nav-row">
+          <button class="btn" id="first">⏮</button><button class="btn" id="back">◀</button>
+          <button class="btn" id="fwd">▶</button><button class="btn" id="last">⏭</button>
+          <button class="btn" id="flip">⇅</button>
+        </div>
       </div>
-      <p class="muted">${t('an.note')}</p>
+      <div class="side-col panel">
+        <div class="engine-head">
+          <label class="toggle"><input type="checkbox" id="engOn" ${store.get('engOn', true) ? 'checked' : ''}> ${t('an.engine')}</label>
+          <label class="toggle"><input type="checkbox" id="arrowOn" ${store.get('arrowOn', true) ? 'checked' : ''}> ${t('an.showArrow')}</label>
+          <span class="eng-depth muted"></span>
+        </div>
+        <div class="eng-lines"></div>
+        <div class="moves" id="fmoves"></div>
+        <div class="btn-row">
+          <button class="btn primary" id="full">🔍 ${t('an.analyseFull')}</button>
+          <button class="btn" id="undo">↶ ${t('common.takeback')}</button>
+          <button class="btn" id="reset">⟲ ${t('an.reset')}</button>
+        </div>
+        <details class="load-box">
+          <summary>${t('an.loadPgn')}</summary>
+          <textarea id="pgn" rows="5" placeholder="1. e4 e5 2. Nf3 Nc6 …  /  FEN"></textarea>
+          <button class="btn" id="load">${t('an.load')}</button>
+        </details>
+      </div>
     </div>`;
-  root.querySelector('#go').onclick = () => {
-    const text = root.querySelector('#pgn').value.trim();
-    const c = new Chess();
-    try { c.loadPgn(text); } catch {
-      toast(t('an.badPgn'), 'bad');
+  const board = new Board(root.querySelector('#fboard'), { orientation: init.orientation || 'w' });
+  const engine = getEngine();
+  const linesEl = root.querySelector('.eng-lines');
+  const depthEl = root.querySelector('.eng-depth');
+  const barWhite = root.querySelector('.evalbar-white');
+  const barText = root.querySelector('.evalbar-text');
+  let startFen = init.startFen || new Chess().fen();
+  let moves = [];   // SAN
+  let cur = 0;      // сколько ходов показано
+  let tok = 0;
+  let lines = [];
+
+  // восстановить прошлую доску
+  try {
+    const c = new Chess(startFen);
+    for (const m of init.moves || []) { c.move(m); moves.push(m); }
+    cur = Math.min(init.cur ?? moves.length, moves.length);
+  } catch { startFen = new Chess().fen(); moves = []; cur = 0; }
+
+  const save = () => store.set('anBoard', { startFen, moves, cur, orientation: board.orientation });
+  const position = (n = cur) => { const c = new Chess(startFen); for (let i = 0; i < n; i++) c.move(moves[i]); return c; };
+
+  function evalOf(line, turn) {
+    const sign = turn === 'w' ? 1 : -1;
+    return line.score.mate !== undefined ? { mate: sign * line.score.mate, cp: null } : { cp: sign * line.score.cp, mate: null };
+  }
+
+  function drawLines(chess) {
+    const turn = chess.turn();
+    if (chess.isGameOver()) {
+      linesEl.innerHTML = `<div class="eng-line over">${chess.isCheckmate() ? t('an.mateOnBoard') : t('result.draw')}</div>`;
       return;
     }
-    if (!c.history().length) { toast(t('an.noMoves'), 'bad'); return; }
-    store.set('lastPgn', text);
-    const h = c.getHeaders ? c.getHeaders() : c.header();
-    const val = (v) => (v && v !== '?' ? v : null);
-    run(root, { moves: c.history(), white: val(h.White) || t('common.white'), black: val(h.Black) || t('common.black'), result: val(h.Result) !== '*' ? val(h.Result) : null });
+    if (!root.querySelector('#engOn').checked) { linesEl.innerHTML = `<div class="muted">${t('an.engineOff')}</div>`; return; }
+    if (!lines.length) { linesEl.innerHTML = `<div class="muted">${t('an.thinking')}</div>`; return; }
+    linesEl.innerHTML = lines.map((l, i) => {
+      if (!l) return '';
+      const ev = evalOf(l, turn);
+      const c = new Chess(chess.fen());
+      const sans = [];
+      for (const u of l.pv.slice(0, 10)) { try { sans.push(c.move(uciMv(u)).san); } catch { break; } }
+      let num = Number(chess.fen().split(' ')[5]);
+      let w = turn === 'w';
+      const txt = sans.map((s, j) => { const p = w ? `${num}.${s}` : (j === 0 ? `${num}...${s}` : s); if (!w) num++; w = !w; return p; }).join(' ');
+      return `<div class="eng-line" data-i="${i}"><span class="eng-eval ${(ev.mate ?? ev.cp) >= 0 ? 'pos' : 'neg'}">${evalText(ev)}</span><span class="eng-pv">${esc(txt)}</span></div>`;
+    }).join('');
+    const ev = evalOf(lines[0], turn);
+    const wp = winPercent(ev);
+    barWhite.style.height = `${wp}%`;
+    barText.textContent = evalText(ev);
+    barText.className = `evalbar-text ${wp >= 50 ? 'on-white' : 'on-black'}`;
+    board.setArrows(root.querySelector('#arrowOn').checked && lines[0].pv[0] ? [{ from: lines[0].pv[0].slice(0, 2), to: lines[0].pv[0].slice(2, 4), color: 'blue' }] : []);
+  }
+
+  function think(chess) {
+    const my = ++tok;
+    lines = [];
+    depthEl.textContent = '';
+    engine.stop();
+    board.setArrows([]);
+    drawLines(chess);
+    if (chess.isGameOver() || !root.querySelector('#engOn').checked) {
+      if (chess.isCheckmate()) { const wp = chess.turn() === 'w' ? 0 : 100; barWhite.style.height = `${wp}%`; barText.textContent = '#'; }
+      return;
+    }
+    setTimeout(() => {
+      if (my !== tok) return;
+      let last = 0;
+      engine.analyse(chess.fen(), {
+        depth: 20, multipv: 3,
+        onInfo: (info) => {
+          if (my !== tok) return;
+          lines[info.multipv - 1] = info;
+          depthEl.textContent = t('an.depthN', { d: info.depth });
+          const now = performance.now();
+          if (now - last > 120) { last = now; drawLines(chess); }
+        },
+      }).then(() => { if (my === tok) drawLines(chess); });
+    }, 120);
+  }
+
+  function show(animate = true) {
+    const chess = position();
+    board.fromChess(chess, { movable: chess.isGameOver() ? null : 'both', animate });
+    const box = root.querySelector('#fmoves');
+    box.innerHTML = moveListHtml(moves, cur - 1) || `<div class="muted">${t('an.boardEmpty')}</div>`;
+    box.querySelector('.cur')?.scrollIntoView({ block: 'nearest' });
+    save();
+    think(chess);
+  }
+
+  board.onMove = (from, to, promotion, animate = false) => {
+    const chess = position();
+    let mv;
+    try { mv = chess.move({ from, to, promotion }); } catch { show(false); return; }
+    moveSound(mv);
+    if (moves[cur] !== mv.san) { moves = moves.slice(0, cur); moves.push(mv.san); } // новый вариант заменяет продолжение
+    cur++;
+    show(animate);
   };
+
+  const go = (n) => {
+    const target = Math.max(0, Math.min(moves.length, n));
+    if (target === cur) return;
+    if (target === cur + 1) { const c = position(); moveSound(c.move(moves[cur])); }
+    cur = target;
+    show(true);
+  };
+  root.querySelector('#first').onclick = () => go(0);
+  root.querySelector('#back').onclick = () => go(cur - 1);
+  root.querySelector('#fwd').onclick = () => go(cur + 1);
+  root.querySelector('#last').onclick = () => go(moves.length);
+  root.querySelector('#flip').onclick = () => { board.flip(); save(); };
+  root.querySelector('#fmoves').onclick = (e) => { const m = e.target.closest('.mv[data-ply]'); if (m) go(Number(m.dataset.ply) + 1); };
+  linesEl.onclick = (e) => {
+    const l = e.target.closest('.eng-line[data-i]');
+    if (!l || !lines[l.dataset.i]) return;
+    const u = lines[l.dataset.i].pv[0];
+    board.onMove(u.slice(0, 2), u.slice(2, 4), u[4], true);
+  };
+  root.querySelector('#engOn').onchange = (e) => { store.set('engOn', e.target.checked); show(false); };
+  root.querySelector('#arrowOn').onchange = (e) => { store.set('arrowOn', e.target.checked); drawLines(position()); if (!e.target.checked) board.setArrows([]); };
+  root.querySelector('#undo').onclick = () => { if (!cur) return; moves = moves.slice(0, cur - 1); cur--; show(true); };
+  root.querySelector('#reset').onclick = () => { startFen = new Chess().fen(); moves = []; cur = 0; show(false); };
+  root.querySelector('#full').onclick = () => {
+    if (!moves.length) { toast(t('an.noMoves'), 'bad'); return; }
+    tok++; engine.stop();
+    run(root, { moves: moves.slice(), startFen, orientation: board.orientation });
+  };
+  root.querySelector('#load').onclick = () => {
+    const text = root.querySelector('#pgn').value.trim();
+    if (!text) return;
+    const c = new Chess();
+    try {
+      c.loadPgn(text);
+      const hdr = c.getHeaders ? c.getHeaders() : c.header();
+      startFen = hdr.FEN || new Chess().fen();
+      moves = c.history(); cur = moves.length;
+    } catch {
+      try { new Chess(text); startFen = text; moves = []; cur = 0; } catch { toast(t('an.badPgn'), 'bad'); return; }
+    }
+    root.querySelector('.load-box').open = false;
+    show(false);
+  };
+  const key = (e) => {
+    if (!document.body.contains(board.el)) { window.removeEventListener('keydown', key); return; }
+    if (['TEXTAREA', 'INPUT', 'SELECT'].includes(e.target.tagName)) return;
+    if (e.key === 'ArrowLeft') go(cur - 1);
+    if (e.key === 'ArrowRight') go(cur + 1);
+  };
+  window.addEventListener('keydown', key);
+  root._cleanup = () => { tok++; engine.stop(); };
+  show(false);
 }
 
 async function run(root, data) {
@@ -70,6 +237,7 @@ async function run(root, data) {
           <button class="btn" id="first">⏮</button><button class="btn" id="back">◀</button>
           <button class="btn" id="fwd">▶</button><button class="btn" id="last">⏭</button>
           <button class="btn" id="flip">⇅</button>
+          <button class="btn" id="toBoard">♟ ${t('an.toBoard')}</button>
         </div>
       </div>
       <div class="side-col panel">
@@ -81,12 +249,16 @@ async function run(root, data) {
       </div>
     </div>`;
   const board = new Board(root.querySelector('#aboard'), { orientation: data.orientation || 'w' });
-  const chess = new Chess();
+  const chess = new Chess(data.startFen || undefined);
   for (const m of data.moves) chess.move(typeof m === 'string' && /^[a-h][1-8][a-h][1-8][qrbn]?$/.test(m) ? { from: m.slice(0, 2), to: m.slice(2, 4), promotion: m[4] } : m);
   const sans = chess.history();
-  board.setPosition(new Chess().fen());
+  board.setPosition(new Chess(data.startFen || undefined).fen());
   root.querySelector('#amoves').innerHTML = moveListHtml(sans, -1);
 
+  root.querySelector('#toBoard').onclick = () => {
+    run.id = (run.id || 0) + 1;
+    renderBoard(root, { startFen: data.startFen, moves: sans, cur: sans.length, orientation: board.orientation });
+  };
   root.querySelector('#depth').onchange = (e) => {
     store.set('depth', Number(e.target.value));
     run(root, data);
@@ -101,7 +273,7 @@ async function run(root, data) {
   const myRun = (run.id = (run.id || 0) + 1);
   let res;
   try {
-    res = await analyzeGame({ moves: sans }, engine, {
+    res = await analyzeGame({ moves: sans, startFen: data.startFen }, engine, {
       depth: store.get('depth', 12),
       onProgress: (p) => {
         if (run.id !== myRun) throw new Error('cancelled');

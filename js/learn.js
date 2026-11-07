@@ -1,7 +1,7 @@
 import { Chess } from '../lib/chess.js';
 import { Board } from './board.js';
 import { SECTIONS, OPENINGS } from './lessons-data.js';
-import { esc, store, moveListHtml, checkSquare, playSound } from './ui.js';
+import { esc, store, moveListHtml, checkSquare, playSound, moveSound } from './ui.js';
 import { t, tx, getLang } from './i18n.js';
 
 const done = () => store.get('done', {});
@@ -20,12 +20,14 @@ export function renderLearn(root) {
           <div class="card-title">${esc(tx(l.title))}</div>
           <div class="card-sub">${t('learn.steps', { n: l.steps.length })}${d[l.id] ? ` · ${t('learn.completed')} ✓` : ''}</div>
         </a>`).join('')}</div>`).join('')}
-    <h2>♗ ${t('learn.openings')}</h2>
-    <div class="cards">${OPENINGS.map((o) => `
-      <a class="card lesson-card ${d['op-' + o.id] ? 'done' : ''}" href="#/learn/opening/${o.id}">
-        <div class="card-title">${esc(tx(o.title))}</div>
-        <div class="card-sub">${o.eco} · ${t(o.side === 'w' ? 'learn.forWhite' : 'learn.forBlack')}${d['op-' + o.id] ? ` · ${t('learn.learned')} ✓` : ''}</div>
-      </a>`).join('')}</div>`;
+    <h2>♗ ${t('learn.openings')} <small>(${OPENINGS.length})</small></h2>
+    ${['e4w', 'e4b', 'd4w', 'd4b', 'flank'].map((g) => `
+      <h3>${t('learn.group.' + g)}</h3>
+      <div class="cards">${OPENINGS.filter((o) => o.group === g).map((o) => `
+        <a class="card lesson-card ${d['op-' + o.id] ? 'done' : ''}" href="#/learn/opening/${o.id}">
+          <div class="card-title">${esc(tx(o.title))}</div>
+          <div class="card-sub">${o.eco} · ${t(o.side === 'w' ? 'learn.forWhite' : 'learn.forBlack')}${d['op-' + o.id] ? ` · ${t('learn.learned')} ✓` : ''}</div>
+        </a>`).join('')}</div>`).join('')}`;
 }
 
 export function renderLesson(root, id) {
@@ -101,7 +103,7 @@ export function renderLesson(root, id) {
     const st = lesson.steps[step];
     let mv;
     try { mv = chess.move({ from, to, promotion }); } catch { update(); return; }
-    playSound(mv.captured ? 'capture' : 'move');
+    moveSound(mv);
 
     if (st.type === 'explore') {
       const parts = chess.fen().split(' ');
@@ -130,7 +132,7 @@ export function renderLesson(root, id) {
         setTimeout(() => {
           const r = chess.move(st.line[seqIdx]);
           seqIdx++;
-          playSound(r.captured ? 'capture' : 'move');
+          moveSound(r);
           update([r.from, r.to]);
           if (seqIdx >= st.line.length) success(st.success);
           else feedback(t('common.yourMove'), '');

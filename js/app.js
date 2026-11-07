@@ -3,7 +3,7 @@ import { t, initI18n, setLang, getLang, LANGS, FULL_CONTENT_LANGS } from './i18n
 import { renderLearn, renderLesson, renderOpening } from './learn.js';
 import { renderBots, renderBotGame } from './botplay.js';
 import { renderAnalysis } from './analysis-view.js';
-import { renderTraining, renderPuzzle, renderEnPassant, renderCastling, renderEndgame } from './training.js';
+import { renderTraining, renderPuzzleTrack, renderEnPassant, renderCastling, renderEndgame } from './training.js';
 import { BOTS } from './bots.js';
 
 export const SITE_NAME = 'Fianchetto';
@@ -91,7 +91,8 @@ function route() {
       break;
     case 'train':
       if (parts[1] === 'end') renderEndgame(app, parts[2]);
-      else if (parts[1] === 'mate1' || parts[1] === 'promo') renderPuzzle(app, parts[1]);
+      else if (parts[1] === 'p') renderPuzzleTrack(app, parts[2]);
+      else if (parts[1] === 'mate1' || parts[1] === 'promo') renderPuzzleTrack(app, parts[1]);
       else if (parts[1] === 'ep') renderEnPassant(app);
       else if (parts[1] === 'castle') renderCastling(app);
       else renderTraining(app);

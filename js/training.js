@@ -2,10 +2,17 @@ import { Chess } from '../lib/chess.js';
 import { Board } from './board.js';
 import { getEngine } from './engine.js';
 import { ENDGAMES } from './train-gen.js';
-import { esc, store, moveListHtml, playSound, toast } from './ui.js';
+import { store, moveListHtml, playSound, moveSound, toast } from './ui.js';
 import { t, tx } from './i18n.js';
 
-// ---------- генерация задач в отдельном потоке ----------
+// ---------- данные задач (сгенерированы заранее и отсортированы от простых к сложным) ----------
+let dataPromise = null;
+function loadData() {
+  if (!dataPromise) dataPromise = fetch(new URL('../data/puzzles.json', import.meta.url)).then((r) => r.json());
+  return dataPromise;
+}
+
+// ---------- генерация вопросов в отдельном потоке ----------
 let worker = null;
 let seq = 0;
 const waiting = new Map();
@@ -25,8 +32,18 @@ function gen(kind, arg) {
   });
 }
 
-const stats = (key) => store.get('train', {})[key] || { solved: 0, streak: 0, best: 0 };
-function saveStats(key, s) { const all = store.get('train', {}); all[key] = s; store.set('train', all); }
+// ---------- прогресс ----------
+const getProg = (k) => store.get('prog', {})[k] || 0;
+function setProg(k, v) { const all = store.get('prog', {}); all[k] = v; store.set('prog', all); }
+const stats = (k) => store.get('train2', {})[k] || { solved: 0, streak: 0, best: 0 };
+function saveStats(k, s) { const all = store.get('train2', {}); all[k] = s; store.set('train2', all); }
+function result(k, ok) {
+  const s = stats(k);
+  if (ok) { s.solved++; s.streak++; s.best = Math.max(s.best, s.streak); } else s.streak = 0;
+  saveStats(k, s);
+}
+
+const QUIZ_LEVELS = 15; // уровни у викторин «на проходе» и «рокировка»
 
 const THEORY = {
   kq: { en: 'Put the queen a <b>knight\'s move</b> away from the enemy king and shrink its "box". Once the king is pushed to the edge, bring your own king and mate. <b>Beware of stalemate:</b> always leave the enemy king at least one square until your king arrives.',
@@ -43,25 +60,41 @@ const THEORY = {
     ru: 'Король должен идти <b>впереди</b> пешки и занимать ключевые поля. Используйте <b>оппозицию</b>: короли друг напротив друга через одну клетку, и ходит соперник. Проведите пешку в ферзи и поставьте мат.' },
 };
 
-export function renderTraining(root) {
-  const s = (k) => stats(k);
-  const card = (href, title, sub, key) => `
-    <a class="card" href="${href}"><div class="card-title">${title}</div><div class="card-sub">${sub}</div>
-    ${key && s(key).solved ? `<div class="card-stat">${t('tr.solved', { n: s(key).solved })}${s(key).best ? ` · ${t('tr.bestStreak', { n: s(key).best })}` : ''}</div>` : ''}</a>`;
+const PUZZLE_TRACKS = [
+  { id: 'mate1', icon: '#', title: 'tr.mate1', sub: 'tr.mate1Sub' },
+  { id: 'mate2', icon: '#²', title: 'tr.mate2', sub: 'tr.mate2Sub' },
+  { id: 'mate3', icon: '#³', title: 'tr.mate3', sub: 'tr.mate3Sub' },
+  { id: 'tactic', icon: '⚔', title: 'tr.tactic', sub: 'tr.tacticSub' },
+  { id: 'promo', icon: '♛', title: 'tr.promo', sub: 'tr.promoSub' },
+];
+
+function progressHtml(i, n, done = i) {
+  const pct = n ? Math.round((Math.min(done, n) / n) * 100) : 0;
+  return `<div class="lvl-bar"><div style="width:${pct}%"></div></div><div class="lvl-text">${t('tr.levelOf', { i: Math.min(i + 1, n), n })}</div>`;
+}
+
+export async function renderTraining(root) {
+  root.innerHTML = `<h1>${t('nav.train')}</h1><p class="lead">${t('tr.lead')}</p><p>${t('common.loading')}</p>`;
+  let data;
+  try { data = await loadData(); } catch { root.innerHTML += `<p class="bad">${t('err.http', { code: 'data' })}</p>`; return; }
+  const card = (href, title, sub, key, total) => {
+    const i = getProg(key);
+    return `<a class="card train-card" href="${href}"><div class="card-title">${title}</div><div class="card-sub">${sub}</div>
+      ${total ? progressHtml(i, total) : ''}${i >= total && total ? `<div class="card-stat">✓ ${t('tr.trackDone')}</div>` : ''}</a>`;
+  };
   root.innerHTML = `
     <h1>${t('nav.train')}</h1>
     <p class="lead">${t('tr.lead')}</p>
+    <h2>⚔ ${t('tr.tactics')}</h2>
+    <div class="cards">${PUZZLE_TRACKS.map((tr) => card(`#/train/p/${tr.id}`, `${tr.icon} ${t(tr.title)}`, t(tr.sub), tr.id, data[tr.id].length)).join('')}</div>
     <h2>♔ ${t('tr.mates')}</h2>
     <p class="muted">${t('tr.matesNote')}</p>
-    <div class="cards">${Object.entries(ENDGAMES).map(([k, e]) => card(`#/train/end/${k}`, `${e.icon} ${t('end.title.' + k)}`, t('end.sub.' + k), 'end-' + k)).join('')}</div>
+    <div class="cards">${Object.entries(ENDGAMES).map(([k, e]) => card(`#/train/end/${k}`, `${e.icon} ${t('end.title.' + k)}`, t('end.sub.' + k), 'end-' + k, (data.end[k] || []).length)).join('')}</div>
     <h2>♙ ${t('tr.special')}</h2>
     <div class="cards">
-      ${card('#/train/ep', `⇗ ${t('tr.ep')}`, t('tr.epSub'), 'ep')}
-      ${card('#/train/castle', `♜ ${t('tr.castle')}`, t('tr.castleSub'), 'castle')}
-      ${card('#/train/promo', `♛ ${t('tr.promo')}`, t('tr.promoSub'), 'promo')}
-    </div>
-    <h2>⚔ ${t('tr.tactics')}</h2>
-    <div class="cards">${card('#/train/mate1', `# ${t('tr.mate1')}`, t('tr.mate1Sub'), 'mate1')}</div>`;
+      ${card('#/train/ep', `⇗ ${t('tr.ep')}`, t('tr.epSub'), 'ep', QUIZ_LEVELS)}
+      ${card('#/train/castle', `♜ ${t('tr.castle')}`, t('tr.castleSub'), 'castle', QUIZ_LEVELS)}
+    </div>`;
 }
 
 function shell(root, title, extra = '') {
@@ -71,105 +104,226 @@ function shell(root, title, extra = '') {
       <div class="board-col"><div id="tboard"></div></div>
       <div class="side-col panel">
         <h2>${title}</h2>
+        <div class="lvl"></div>
         ${extra}
-        <div class="train-stats"></div>
         <div class="task"></div>
         <div class="feedback"></div>
         <div class="answers btn-row"></div>
         <div class="btn-row controls"></div>
+        <div class="train-stats muted"></div>
       </div>
     </div>`;
   return new Board(root.querySelector('#tboard'));
 }
 
-function setStats(root, key) {
+const fb = (root, html, cls = '') => { const el = root.querySelector('.feedback'); el.className = `feedback ${cls}`; el.innerHTML = html; };
+const alive = (board) => document.body.contains(board.el);
+const uciMv = (u) => ({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function setLevel(root, key, i, n) {
+  root.querySelector('.lvl').innerHTML = progressHtml(i, n, getProg(key));
   const s = stats(key);
   root.querySelector('.train-stats').innerHTML = t('tr.statsLine', { solved: s.solved, streak: s.streak, best: s.best });
 }
 
-function result(root, key, ok) {
-  const s = stats(key);
-  if (ok) { s.solved++; s.streak++; s.best = Math.max(s.best, s.streak); } else s.streak = 0;
-  saveStats(key, s);
-  setStats(root, key);
-}
+// ---------- Задачи: мат в 1/2/3, найди выигрывающий ход, превращение ----------
+export async function renderPuzzleTrack(root, track) {
+  const tr = PUZZLE_TRACKS.find((x) => x.id === track);
+  if (!tr) { location.hash = '#/train'; return; }
+  const board = shell(root, `${tr.icon} ${t(tr.title)}`);
+  const data = await loadData();
+  const list = data[track];
+  const engine = getEngine();
+  root.querySelector('.controls').innerHTML = `
+    <button class="btn" id="hint">💡 ${t('common.hint')}</button>
+    <button class="btn" id="show">${t('tr.showSolution')}</button>
+    <button class="btn" id="retry">↻ ${t('tr.retry')}</button>
+    <button class="btn primary" id="next">${t('common.next')} →</button>`;
+  const btn = (id) => root.querySelector('#' + id);
+  let i = Math.min(getProg(track), list.length - 1);
+  let pz, chess, color, need, failed, solved, busy, hintStep, token = 0;
 
-const fb = (root, html, cls = '') => { const el = root.querySelector('.feedback'); el.className = `feedback ${cls}`; el.innerHTML = html; };
-const alive = (board) => document.body.contains(board.el);
-
-// ---------- Мат в 1 и мат превращением ----------
-export function renderPuzzle(root, kind) {
-  const key = kind === 'promo' ? 'promo' : 'mate1';
-  const board = shell(root, kind === 'promo' ? `♛ ${t('tr.promo')}` : `# ${t('tr.mate1')}`);
-  let task = null;
-  let chess = null;
-  let answered = false;
-  root.querySelector('.controls').innerHTML = `<button class="btn" id="show">${t('tr.showSolution')}</button><button class="btn primary" id="nextp">${t('common.next')} →</button>`;
-  setStats(root, key);
-
-  async function next() {
-    fb(root, t('tr.generating'));
-    board.setArrows([]); board.setMovable(null);
-    try { task = await gen(kind === 'promo' ? 'genPromotionMate' : 'genMateIn1'); } catch (e) { fb(root, e.message, 'bad'); return; }
-    if (!alive(board)) return;
-    chess = new Chess(task.fen);
-    answered = false;
-    board.setOrientation('w');
-    board.fromChess(chess, { movable: 'w', lastMove: null });
-    root.querySelector('.task').innerHTML = kind === 'promo'
-      ? t('tr.promoTask')
-      : t('tr.mate1Task');
+  function load(idx) {
+    i = Math.max(0, Math.min(idx, list.length - 1));
+    pz = list[i];
+    chess = new Chess(pz.f);
+    color = chess.turn();
+    need = pz.n || 1;       // сколько ходов осталось до мата
+    failed = false; solved = false; busy = false; hintStep = 0; token++;
+    board.setArrows([]);
+    board.setOrientation(color);
+    board.fromChess(chess, { movable: color, lastMove: null, animate: false });
+    setLevel(root, track, i, list.length);
+    const side = t(color === 'w' ? 'tr.whiteToMove' : 'tr.blackToMove');
+    const task = track === 'tactic' ? t('tr.tacticTask') : track === 'promo' ? t('tr.promoTask2') : t('tr.mateTask', { n: pz.n });
+    root.querySelector('.task').innerHTML = `${side} <b>${task}</b>`;
     fb(root, '');
+    btn('next').disabled = true;
   }
 
-  board.onMove = (from, to, promotion) => {
+  function win() {
+    solved = true;
+    board.setMovable(null);
+    if (!failed) result(track, true);
+    if (!failed || i + 1 > getProg(track)) setProg(track, Math.max(getProg(track), i + 1));
+    playSound('end');
+    fb(root, `✅ ${failed ? t('tr.solvedAfterTry') : t('tr.solvedOk')}${i + 1 >= list.length ? ` ${t('tr.trackDone')}` : ''}`, 'ok');
+    btn('next').disabled = i + 1 >= list.length;
+    setLevel(root, track, i, list.length);
+  }
+
+  function lose(msg) {
+    if (!failed) result(track, false);
+    failed = true;
+    playSound('wrong');
+    fb(root, `❌ ${msg}`, 'bad');
+  }
+
+  async function opponentReply(fen) {
+    const r = await engine.analyse(fen, { depth: 12 });
+    return r.bestmove;
+  }
+
+  board.onMove = async (from, to, promotion) => {
+    if (busy || solved) return;
+    const my = token;
+    const before = chess.fen();
     let mv;
-    try { mv = chess.move({ from, to, promotion }); } catch { board.fromChess(chess, { movable: 'w' }); return; }
-    playSound(mv.captured ? 'capture' : 'move');
-    board.fromChess(chess, { movable: null, lastMove: [from, to] });
-    const ok = chess.isCheckmate();
-    if (!answered) result(root, key, ok);
-    answered = true;
-    if (ok) {
-      playSound('end');
-      fb(root, `✅ ${t('tr.mateOk', { m: mv.san })}${kind === 'promo' && mv.promotion === 'n' ? ` ${t('tr.underpromo')}` : ''}`, 'ok');
-    } else {
-      const why = t(chess.isStalemate() ? 'tr.stalemate' : chess.inCheck() ? 'tr.checkNotMate' : 'tr.notMate');
-      fb(root, `❌ ${why} ${t('tr.tryAgain')}`, 'bad');
-      setTimeout(() => { if (!alive(board)) return; chess.undo(); board.fromChess(chess, { movable: 'w' }); }, 1100);
+    try { mv = chess.move({ from, to, promotion }); } catch { board.fromChess(chess, { movable: color }); return; }
+    moveSound(mv);
+    board.setArrows([]);
+    busy = true;
+    board.fromChess(chess, { movable: null, lastMove: [from, to], animate: false });
+    let ok = false;
+    if (chess.isCheckmate()) { ok = true; }
+    else if (track === 'tactic') {
+      if (mv.lan === pz.s) ok = true;
+      else {
+        // другой ход тоже засчитывается, если он выигрывает не хуже
+        const r = await engine.analyse(chess.fen(), { depth: 12 });
+        const l = r.lines[0];
+        const ev = l ? (l.score.mate !== undefined ? (l.score.mate < 0 ? 99999 : -99999) : -l.score.cp) : -9999;
+        ok = ev >= Math.max(200, (pz.e || 300) - 120);
+      }
+      if (my !== token) return;
+      if (ok) {
+        // показываем идею: ещё пару ходов основного варианта
+        board.setMovable(null);
+        if (mv.lan === pz.s) {
+          for (const u of (pz.p || []).slice(1, 4)) {
+            await sleep(650);
+            if (my !== token || !alive(board)) return;
+            let r;
+            try { r = chess.move(uciMv(u)); } catch { break; }
+            moveSound(r);
+            board.fromChess(chess, { movable: null });
+          }
+        }
+        busy = false;
+        win();
+        return;
+      }
+    } else if (!chess.isGameOver() && need > 1) {
+      // мат в N: после хода должен оставаться мат не дольше, чем нужно
+      const r = await engine.analyse(chess.fen(), { depth: Math.min(20, 6 + need * 4) });
+      if (my !== token) return;
+      const l = r.lines[0];
+      if (l && l.score.mate !== undefined && l.score.mate < 0 && -l.score.mate <= need - 1) {
+        need = -l.score.mate;
+        await sleep(350);
+        if (my !== token || !alive(board)) return;
+        const rep = chess.move(uciMv(r.bestmove));
+        moveSound(rep);
+        busy = false;
+        board.fromChess(chess, { movable: color });
+        fb(root, `👍 ${t('tr.goodContinue', { n: need })}`, 'ok');
+        return;
+      }
     }
+    if (my !== token) return;
+    if (ok) { busy = false; win(); return; }
+    lose(chess.isStalemate() ? t('tr.stalemate') : t('tr.notBest'));
+    await sleep(900);
+    if (my !== token || !alive(board)) return;
+    chess.load(before);
+    busy = false;
+    board.fromChess(chess, { movable: color, lastMove: null });
   };
-  root.querySelector('#show').onclick = () => {
-    if (!task) return;
-    if (!answered) result(root, key, false);
-    answered = true;
-    const u = task.mates[0];
-    board.setArrows([{ from: u.slice(0, 2), to: u.slice(2, 4), color: 'green' }]);
-    const san = new Chess(task.fen).move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] }).san;
-    fb(root, t('tr.solution', { m: `<b>${san}</b>` }));
+
+  btn('hint').onclick = () => {
+    if (solved || busy) return;
+    hintStep++;
+    if (!failed) { result(track, false); failed = true; }
+    const go = async () => {
+      let u = pz.s;
+      if (chess.fen() !== pz.f) { const r = await engine.analyse(chess.fen(), { depth: 14 }); u = r.bestmove; }
+      if (hintStep === 1) board.setHints([{ sq: u.slice(0, 2), cls: 'hint-from' }]);
+      else board.setArrows([{ from: u.slice(0, 2), to: u.slice(2, 4), color: 'green' }]);
+    };
+    go();
   };
-  root.querySelector('#nextp').onclick = next;
-  next();
+  btn('show').onclick = async () => {
+    if (solved || busy) return;
+    if (!failed) { result(track, false); failed = true; }
+    busy = true;
+    const my = token;
+    // проигрываем решение на доске
+    let line = pz.p && pz.p.length ? pz.p : [pz.s];
+    chess.load(pz.f);
+    board.fromChess(chess, { movable: null, lastMove: null, animate: false });
+    if (track !== 'tactic' && pz.n) line = line.slice(0, pz.n * 2 - 1);
+    for (const u of line.slice(0, 7)) {
+      await sleep(600);
+      if (my !== token || !alive(board)) return;
+      let r;
+      try { r = chess.move(uciMv(u)); } catch { break; }
+      moveSound(r);
+      board.fromChess(chess, { movable: null });
+    }
+    busy = false;
+    fb(root, t('tr.solutionShown'));
+    setProg(track, Math.max(getProg(track), i + 1));
+    btn('next').disabled = i + 1 >= list.length;
+  };
+  btn('retry').onclick = () => load(i);
+  btn('next').onclick = () => load(i + 1);
+  root.querySelector('.lvl').onclick = (e) => {
+    if (!e.target.closest('.lvl-bar')) return;
+    const r = e.target.closest('.lvl-bar').getBoundingClientRect();
+    const target = Math.floor(((e.clientX - r.left) / r.width) * list.length);
+    if (target <= getProg(track)) load(target); // можно вернуться к пройденным уровням
+  };
+  root._cleanup = () => { token++; engine.stop(); };
+  load(i);
 }
 
-// ---------- Взятие на проходе ----------
+// ---------- Взятие на проходе: «можно или нельзя?» (уровни) ----------
 export function renderEnPassant(root) {
+  const key = 'ep';
   const board = shell(root, `⇗ ${t('tr.ep')}`);
   root.querySelector('.controls').innerHTML = `<button class="btn primary" id="nexte">${t('tr.nextPos')} →</button>`;
-  setStats(root, 'ep');
-  let task, chess, stage;
+  let task, chess, stage, level;
 
   async function next() {
-    task = await gen('genEnPassant');
+    level = Math.min(getProg(key), QUIZ_LEVELS - 1);
+    setLevel(root, key, level, QUIZ_LEVELS);
+    task = await gen('genEnPassant', level);
     if (!alive(board)) return;
     chess = new Chess(task.fen);
     stage = 'ask';
     board.setOrientation(task.color);
-    board.fromChess(chess, { movable: null, lastMove: task.lastMove });
+    board.fromChess(chess, { movable: null, lastMove: task.lastMove, animate: false });
     board.setArrows([{ from: task.lastMove[0], to: task.lastMove[1], color: 'blue' }]);
     root.querySelector('.task').innerHTML = `${t(task.color === 'w' ? 'tr.whiteToMove' : 'tr.blackToMove')} ${t('tr.epLast')}<br><b>${t('tr.epQ')}</b>`;
     root.querySelector('.answers').innerHTML = `<button class="btn" data-a="1">${t('tr.yes')}</button><button class="btn" data-a="0">${t('tr.no')}</button>`;
     fb(root, '');
+  }
+  function done(ok) {
+    result(key, ok);
+    if (ok) setProg(key, Math.min(QUIZ_LEVELS, getProg(key) + 1));
+    setLevel(root, key, Math.min(getProg(key), QUIZ_LEVELS - 1), QUIZ_LEVELS);
+    playSound(ok ? 'end' : 'wrong');
   }
 
   root.querySelector('.answers').onclick = (e) => {
@@ -178,31 +332,26 @@ export function renderEnPassant(root) {
     const said = b.dataset.a === '1';
     root.querySelector('.answers').innerHTML = '';
     if (said !== task.can) {
-      result(root, 'ep', false);
+      done(false);
       fb(root, `❌ ${t('tr.ep.' + task.reason)}`, 'bad');
       if (task.can) board.setArrows([{ from: task.answer.slice(0, 2), to: task.answer.slice(2, 4), color: 'green' }]);
       stage = 'done';
       return;
     }
-    if (!task.can) {
-      result(root, 'ep', true);
-      fb(root, `✅ ${t('common.correct')} ${t('tr.ep.' + task.reason)}`, 'ok');
-      stage = 'done';
-      return;
-    }
+    if (!task.can) { done(true); fb(root, `✅ ${t('common.correct')} ${t('tr.ep.' + task.reason)}`, 'ok'); stage = 'done'; return; }
     stage = 'move';
     fb(root, `👍 ${t('tr.epNowCapture')}`, 'ok');
-    board.fromChess(chess, { movable: task.color, lastMove: task.lastMove });
+    board.fromChess(chess, { movable: task.color, lastMove: task.lastMove, animate: false });
   };
 
   board.onMove = (from, to, promotion) => {
     let mv;
     try { mv = chess.move({ from, to, promotion }); } catch { return; }
-    playSound('capture');
+    moveSound(mv);
     board.fromChess(chess, { movable: null, lastMove: [from, to] });
     board.setArrows([]);
     if (mv.flags.includes('e')) {
-      result(root, 'ep', true);
+      done(true);
       fb(root, `✅ ${t('tr.epDone', { m: mv.san })}`, 'ok');
       stage = 'done';
     } else {
@@ -214,22 +363,24 @@ export function renderEnPassant(root) {
   next();
 }
 
-// ---------- Рокировка ----------
+// ---------- Рокировка (уровни) ----------
 export function renderCastling(root) {
+  const key = 'castle';
   const board = shell(root, `♜ ${t('tr.castle')}`, `<p class="muted">${t('tr.castleRules')}</p>`);
   root.querySelector('.controls').innerHTML = `<button class="btn primary" id="nextc">${t('tr.nextPos')} →</button>`;
-  setStats(root, 'castle');
   let task, stage;
 
   async function next() {
-    task = await gen('genCastling');
+    const level = Math.min(getProg(key), QUIZ_LEVELS - 1);
+    setLevel(root, key, level, QUIZ_LEVELS);
+    task = await gen('genCastling', level);
     if (!alive(board)) return;
     stage = 'ask';
     const chess = new Chess(task.fen);
     board.setOrientation('w');
     board.setArrows([]);
     board.setHints([]);
-    board.fromChess(chess, { movable: null, lastMove: null });
+    board.fromChess(chess, { movable: null, lastMove: null, animate: false });
     root.querySelector('.task').innerHTML = `${t('tr.whiteToMove')}${task.notes.length ? `<br><i>${t('tr.known')}: ${task.notes.map((n) => t('tr.note.' + n)).join(' ')}</i>` : ''}<br><b>${t('tr.castleQ')}</b>`;
     root.querySelector('.answers').innerHTML = ['short', 'long', 'both', 'none']
       .map((v) => `<button class="btn" data-a="${v}">${t('tr.c.' + v)}</button>`).join('');
@@ -241,14 +392,16 @@ export function renderCastling(root) {
     if (!b || stage !== 'ask') return;
     stage = 'done';
     const ok = b.dataset.a === task.answer;
-    result(root, 'castle', ok);
+    result(key, ok);
+    if (ok) setProg(key, Math.min(QUIZ_LEVELS, getProg(key) + 1));
+    setLevel(root, key, Math.min(getProg(key), QUIZ_LEVELS - 1), QUIZ_LEVELS);
+    playSound(ok ? 'end' : 'wrong');
     root.querySelectorAll('.answers button').forEach((x) => {
       x.disabled = true;
       if (x.dataset.a === task.answer) x.classList.add('primary');
     });
-    // Подсветим поля, которые бьёт соперник на пути короля
     const c = new Chess(task.fen);
-    board.setHints(['b1', 'c1', 'd1', 'e1', 'f1', 'g1'].filter((s) => c.isAttacked(s, 'b')).map((sq) => ({ sq, cls: 'hint-attacked' })));
+    board.setHints(['b1', 'c1', 'd1', 'e1', 'f1', 'g1'].filter((sq) => c.isAttacked(sq, 'b')).map((sq) => ({ sq, cls: 'hint-attacked' })));
     const ex = task.explain;
     const side = (k) => `${t('tr.c.' + k + 'Name')}: ${ex[k] ? t('tr.no.' + ex[k].code, { sq: ex[k].squares || '' }) : t('tr.allowed')}.`;
     fb(root, `${ok ? `✅ ${t('common.correct')}` : `❌ ${t('tr.wrong')}`} ${side('short')} ${side('long')}${ex.b1tip ? ` ${t('tr.b1tip')}` : ''}`, ok ? 'ok' : 'bad');
@@ -257,60 +410,57 @@ export function renderCastling(root) {
   next();
 }
 
-// ---------- Техника мата против движка ----------
-export function renderEndgame(root, type) {
+// ---------- Техника мата против движка (уровни: от короткого мата к длинному) ----------
+export async function renderEndgame(root, type) {
   const cfg = ENDGAMES[type];
   if (!cfg) { location.hash = '#/train'; return; }
   const key = 'end-' + type;
-  const board = shell(root, `${cfg.icon} ${t('end.title.' + type)}`, `<details class="theory" open><summary>${t('tr.howToMate')}</summary><p>${tx(THEORY[type])}</p></details>`);
+  const board = shell(root, `${cfg.icon} ${t('end.title.' + type)}`, `<details class="theory" ${getProg(key) < 2 ? 'open' : ''}><summary>${t('tr.howToMate')}</summary><p>${tx(THEORY[type])}</p></details>`);
   root.querySelector('.controls').innerHTML = `
     <button class="btn" id="hintE">💡 ${t('common.hint')}</button>
     <button class="btn" id="undoE">↶ ${t('common.takeback')}</button>
     <button class="btn" id="resetE">↻ ${t('common.retry')}</button>
-    <button class="btn primary" id="newE">${t('tr.newPos')} →</button>`;
-  root.querySelector('.task').innerHTML = '<div class="moves" id="emoves"></div><div class="par"></div>';
-  setStats(root, key);
+    <button class="btn primary" id="nextE">${t('common.next')} →</button>`;
+  root.querySelector('.task').innerHTML = '<div class="par"></div><div class="moves" id="emoves"></div>';
+  const list = (await loadData()).end[type];
   const engine = getEngine();
-  let startFen, chess, over, busy, token = 0, par = null, hinted = false;
+  let i, startFen, chess, over, busy, token = 0, par = null, hinted = false;
 
-  function redraw(lastMove) {
-    board.fromChess(chess, { movable: !over && !busy && chess.turn() === 'w' ? 'w' : null, lastMove });
+  function redraw(lastMove, animate = true) {
+    board.fromChess(chess, { movable: !over && !busy && chess.turn() === 'w' ? 'w' : null, lastMove, animate });
     const sans = chess.history();
     const box = root.querySelector('#emoves');
     box.innerHTML = moveListHtml(sans, sans.length - 1);
     box.scrollTop = box.scrollHeight;
   }
 
-  async function start(fen) {
+  function load(idx) {
     token++;
-    startFen = fen;
-    chess = new Chess(fen);
+    i = Math.max(0, Math.min(idx, list.length - 1));
+    startFen = list[i].f;
+    par = list[i].n;
+    chess = new Chess(startFen);
     over = false; busy = false; hinted = false;
     board.setArrows([]);
     board.setOrientation('w');
-    redraw(null);
+    redraw(null, false);
+    setLevel(root, key, i, list.length);
     fb(root, t('tr.yourMoveWhite'));
-    root.querySelector('.par').textContent = t('tr.parCalc');
-    const my = token;
-    const res = await engine.analyse(fen, { movetime: type === 'kbn' ? 4000 : 2500 });
-    if (my !== token || !alive(board)) return;
-    const m = res.lines[0] && res.lines[0].score.mate;
-    par = m && m > 0 ? m : null;
     root.querySelector('.par').innerHTML = `🎯 ${par ? t('tr.par', { n: par }) : type === 'kbn' ? t('tr.parKbn') : t('tr.parWin')}`;
-  }
-
-  async function newPosition() {
-    fb(root, t('tr.generating'));
-    const fen = await gen('genEndgame', type);
-    if (alive(board)) start(fen);
+    root.querySelector('#nextE').disabled = i >= getProg(key);
   }
 
   function finish(ok, text) {
     over = true;
-    if (!hinted || !ok) result(root, key, ok);
-    playSound('end');
+    if (ok) {
+      if (!hinted) result(key, true);
+      setProg(key, Math.max(getProg(key), i + 1));
+      root.querySelector('#nextE').disabled = i + 1 >= list.length;
+      setLevel(root, key, i, list.length);
+    } else result(key, false);
+    playSound(ok ? 'end' : 'wrong');
     fb(root, text, ok ? 'ok' : 'bad');
-    redraw();
+    redraw(undefined, false);
   }
 
   function checkOver() {
@@ -330,22 +480,22 @@ export function renderEndgame(root, type) {
   board.onMove = async (from, to, promotion) => {
     let mv;
     try { mv = chess.move({ from, to, promotion }); } catch { redraw(); return; }
-    playSound(mv.captured ? 'capture' : 'move');
+    moveSound(mv);
     board.setArrows([]);
     if (checkOver()) return;
     busy = true;
-    redraw([from, to]);
+    redraw([from, to], false);
     fb(root, t('tr.engineThinking'));
     const my = token;
     const started = Date.now();
     const res = await engine.analyse(chess.fen(), { depth: 12 });
     const wait = 350 - (Date.now() - started);
-    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    if (wait > 0) await sleep(wait);
     if (my !== token || !alive(board)) return;
     busy = false;
     if (res.bestmove) {
-      const r = chess.move({ from: res.bestmove.slice(0, 2), to: res.bestmove.slice(2, 4), promotion: res.bestmove[4] });
-      playSound(r.captured ? 'capture' : 'move');
+      const r = chess.move(uciMv(res.bestmove));
+      moveSound(r);
       if (checkOver()) return;
       redraw([r.from, r.to]);
     }
@@ -372,7 +522,8 @@ export function renderEndgame(root, type) {
     redraw();
     fb(root, t('common.yourMove'));
   };
-  root.querySelector('#resetE').onclick = () => start(startFen);
-  root.querySelector('#newE').onclick = newPosition;
-  newPosition().catch((e) => toast(e.message, 'bad'));
+  root.querySelector('#resetE').onclick = () => load(i);
+  root.querySelector('#nextE').onclick = () => load(i + 1);
+  root._cleanup = () => { token++; engine.stop(); };
+  load(Math.min(getProg(key), list.length - 1));
 }

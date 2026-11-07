@@ -179,10 +179,16 @@ export function genPromotionMate(Chess) {
 
 // ---------- Взятие на проходе: «можно или нельзя?» ----------
 // Возвращает {fen, lastMove:[from,to], can, answerMove, explain}
-export function genEnPassant(Chess) {
-  for (let attempt = 0; attempt < 2000; attempt++) {
-    const white = Math.random() < 0.5; // кто берёт
-    const kind = ['yes', 'yes', 'yes', 'single', 'late', 'rank'][rnd(6)];
+export function genEnPassant(Chess, level = 0) {
+  // чем выше уровень, тем больше видов ловушек и лишних фигур
+  const kinds = ['yes', 'yes', 'single'];
+  if (level >= 3) kinds.push('late');
+  if (level >= 6) kinds.push('rank');
+  if (level >= 9) kinds.push('pin', 'pin');
+  const extra = Math.min(6, 1 + Math.floor(level / 2));
+  for (let attempt = 0; attempt < 3000; attempt++) {
+    const white = level < 2 ? true : Math.random() < 0.5; // кто берёт
+    const kind = kinds[rnd(kinds.length)];
     const f = rnd(8);
     const df = Math.random() < 0.5 ? -1 : 1;
     const ef = f + df;
@@ -199,14 +205,31 @@ export function genEnPassant(Chess) {
       p[sqName(ef, 4)] = 'p';
       last = kind === 'single' ? [sqName(ef, 5), sqName(ef, 4)] : [sqName(ef, 6), sqName(ef, 4)];
     }
-    const wk = freeSquare(p, (x) => x[1] <= '3');
-    p[wk] = 'K';
+    let wk;
+    if (kind === 'pin') {
+      // король и вражеская ладья на 5-й горизонтали: взятие на проходе вскроет шах
+      const lo = Math.min(f, ef), hi = Math.max(f, ef);
+      if (lo < 1 || hi > 6) continue;
+      const left = Math.random() < 0.5;
+      const kf = left ? rnd(lo) : hi + 1 + rnd(7 - hi);
+      const rf = left ? hi + 1 + rnd(7 - hi) : rnd(lo);
+      wk = sqName(kf, 4);
+      p[wk] = 'K';
+      p[sqName(rf, 4)] = Math.random() < 0.5 ? 'r' : 'q';
+      const a = Math.min(kf, rf), b = Math.max(kf, rf);
+      let clear = true;
+      for (let x = a + 1; x < b; x++) if (x !== f && x !== ef && p[sqName(x, 4)]) clear = false;
+      if (!clear) continue;
+    } else {
+      wk = freeSquare(p, (x) => x[1] <= '3');
+      p[wk] = 'K';
+    }
     const bk = freeSquare(p, (x) => x[1] >= '7' && kingDist(x, wk) >= 2);
     if (!bk) continue;
     p[bk] = 'k';
-    for (let i = rnd(3); i > 0; i--) {
+    for (let i = rnd(extra + 1); i > 0; i--) {
       const s = freeSquare(p, (x) => x[1] > '1' && x[1] < '8' && x !== sqName(ef, 5) && x !== sqName(ef, 6));
-      if (s) p[s] = ['N', 'B', 'n', 'b', 'P', 'p'][rnd(6)];
+      if (s && s[1] !== '5') p[s] = ['N', 'B', 'n', 'b', 'P', 'p', 'R', 'r'][rnd(8)];
     }
     let lateMove = null;
     if (kind === 'late') {
@@ -223,7 +246,7 @@ export function genEnPassant(Chess) {
       lateMove = [kMoves[rnd(kMoves.length)], bk];
       last = lateMove;
     }
-    const epSq = kind === 'yes' ? sqName(ef, 5) : '-';
+    const epSq = kind === 'yes' || kind === 'pin' ? sqName(ef, 5) : '-';
     let fen = buildFen(p, 'w', '-', epSq);
     let lastMove = last;
     let answer = kind === 'yes' ? sqName(f, 4) + sqName(ef, 5) : null;
@@ -251,8 +274,12 @@ export function genEnPassant(Chess) {
 }
 
 // ---------- Рокировка: какие рокировки возможны? ----------
-export function genCastling(Chess) {
+export function genCastling(Chess, level = 0) {
   const target = ['both', 'short', 'long', 'none'][rnd(4)]; // равномерно все варианты ответа
+  // уровень: сначала только «фигуры мешают / ладья ходила», потом нападения на поля, потом всё сразу
+  const attackersMin = level < 3 ? 0 : level < 7 ? 1 : 2;
+  const attackersMax = level < 3 ? 0 : level < 7 ? 2 : 3;
+  const blockerP = level < 3 ? 0.35 : level < 7 ? 0.2 : 0.12;
   for (let attempt = 0; attempt < 3000; attempt++) {
     const p = { e1: 'K', a1: 'R', h1: 'R', f2: 'P', g2: 'P', h2: 'P', a2: 'P', b2: 'P', c2: 'P' };
     let rights = 'KQ';
@@ -261,11 +288,12 @@ export function genCastling(Chess) {
     if (Math.random() < 0.15) { rights = rights.replace('Q', ''); notes.push('rookA'); }
     if (Math.random() < 0.08) { rights = ''; notes.length = 0; notes.push('king'); }
     // Свои фигуры могут мешать
-    if (Math.random() < 0.2) p.g1 = 'N';
-    if (Math.random() < 0.2) p.b1 = 'N';
-    if (Math.random() < 0.15) p.d1 = 'Q';
+    if (Math.random() < blockerP) p.g1 = 'N';
+    if (Math.random() < blockerP) p.b1 = 'N';
+    if (Math.random() < blockerP * 0.8) p.d1 = 'Q';
+    if (level >= 7 && Math.random() < 0.3) p.e2 = 'B';
     // Нападающие фигуры чёрных
-    const nAtt = 1 + rnd(3);
+    const nAtt = attackersMin + rnd(attackersMax - attackersMin + 1);
     for (let i = 0; i < nAtt; i++) {
       const s = freeSquare(p, (x) => x[1] >= '3' && x[1] <= '7');
       if (s) p[s] = ['r', 'b', 'n', 'q', 'b'][rnd(5)];
