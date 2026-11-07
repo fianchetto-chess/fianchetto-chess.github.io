@@ -1,0 +1,153 @@
+export default {
+  'home.playBots': "Play the bots",
+  // navigation
+  'nav.learn': 'Learn', 'nav.train': 'Practice', 'nav.play': 'Play online', 'nav.bots': 'Bots', 'nav.analysis': 'Analysis', 'nav.leaderboard': 'Leaderboard',
+
+  // common
+  'common.loading': 'Loading…', 'common.notFound': 'Not found', 'common.back': 'Back', 'common.next': 'Next', 'common.finish': 'Finish',
+  'common.hint': 'Hint', 'common.retry': 'Restart', 'common.correct': 'Correct!', 'common.yourMove': 'Your move', 'common.you': 'You',
+  'common.white': 'White', 'common.black': 'Black', 'common.resign': 'Resign', 'common.flip': 'Flip board', 'common.takeback': 'Take back',
+  'common.analyse': 'Analyse', 'common.analyseGame': 'Analyse game', 'common.gamesN': (p) => `${p.n} ${p.n === 1 ? 'game' : 'games'}`,
+
+  // home
+  'home.tagline': 'Learn. Play. Improve.',
+  'home.lead': "Interactive lessons, endless practice, 13 bots from beginner to grandmaster and move-by-move analysis with Stockfish. Free, right in your browser.",
+  'home.playOnline': 'Play online', 'home.startLearning': 'Start learning',
+  'home.f.learn': 'Rules, castling, en passant, tactics and 11 openings with practice mode.',
+  'home.f.train': 'Mate with queen, rook, two bishops and bishop + knight against the engine, en passant, castling, promotion, mate in 1.',
+  'home.f.play': 'Start at 100. Glicko-2 rating like on lichess; opponents are matched within ±200 at most.',
+  'home.f.bots': '{n} opponents from {min} to {max} — the final boss is "The Dark King".',
+  'home.f.analysis': 'Every move gets a symbol — !!, !, !?, ?!, ?, ?? — and a plain-language explanation.',
+  'home.stats': 'Online now: {online} · playing: {playing} · looking for a game: {seeking}',
+
+  // settings
+  'settings.title': 'Settings', 'settings.language': 'Language', 'settings.board': 'Board colours', 'settings.sound': 'Sound',
+  'settings.contentNote': 'The interface is fully translated. Long lesson texts and opening comments are shown in English for this language.',
+
+  // auth
+  'auth.login': 'Log in', 'auth.register': 'Sign up', 'auth.logout': 'Log out', 'auth.create': 'Create account',
+  'auth.username': 'Username', 'auth.password': 'Password (min. 6 characters)', 'auth.loggedOut': 'You have logged out',
+  'auth.welcomeBack': 'Welcome back, {name}!', 'auth.welcome': 'Welcome, {name}! Your rating: 100',
+
+  // errors
+  'err.tooMany': 'Too many attempts, please wait a minute', 'err.badName': 'Username: 3–20 characters — letters, digits, _ and -',
+  'err.badPassword': 'Password must be at least 6 characters', 'err.nameTaken': 'This username is already taken',
+  'err.wrongLogin': 'Wrong username or password', 'err.unauthorized': 'Not logged in', 'err.userNotFound': 'Player not found',
+  'err.gameNotFound': 'Game not found', 'err.notYourTurn': "It's not your turn", 'err.illegalMove': 'Illegal move',
+  'err.loginFirst': 'Please log in first', 'err.alreadyPlaying': 'You are already playing a game', 'err.http': 'Error {code}',
+  'err.engine': 'Engine error: {msg}', 'err.analysis': 'Analysis error: {msg}',
+
+  // results
+  'result.white': 'White wins', 'result.black': 'Black wins', 'result.draw': 'Draw', 'result.aborted': 'Game aborted',
+  'reason.checkmate': 'checkmate', 'reason.stalemate': 'stalemate', 'reason.insufficient': 'insufficient material',
+  'reason.threefold': 'threefold repetition', 'reason.fifty': '50-move rule', 'reason.timeout': 'time out',
+  'reason.timeoutNoMaterial': 'time out, but the opponent cannot mate', 'reason.resign': 'resignation',
+  'reason.agreement': 'agreed draw', 'reason.aborted': 'aborted', 'reason.noFirstMove': 'no first move made',
+  'end.win': 'Victory!', 'end.draw': 'Draw', 'end.loss': 'Defeat',
+  'cat.bullet': 'Bullet', 'cat.blitz': 'Blitz', 'cat.rapid': 'Rapid', 'cat.classical': 'Classical',
+
+  // board
+  'board.promotion': 'Pawn promotion',
+  'piece.q': 'Queen', 'piece.r': 'Rook', 'piece.b': 'Bishop', 'piece.n': 'Knight',
+  'piece.acc.p': 'a pawn', 'piece.acc.n': 'a knight', 'piece.acc.b': 'a bishop', 'piece.acc.r': 'a rook', 'piece.acc.q': 'the queen', 'piece.acc.k': 'the king', 'piece.acc.material': 'material',
+  'piece.gen.p': 'a pawn', 'piece.gen.n': 'a knight', 'piece.gen.b': 'a bishop', 'piece.gen.r': 'a rook', 'piece.gen.q': 'the queen', 'piece.gen.k': 'the king', 'piece.gen.material': 'material',
+
+  // learn
+  'learn.title': 'Learn', 'learn.lead': 'From the rules to openings. Every lesson is interactive — move the pieces right on the board.',
+  'learn.openings': 'Openings', 'learn.steps': (p) => `${p.n} ${p.n === 1 ? 'step' : 'steps'}`, 'learn.completed': 'completed', 'learn.learned': 'learned',
+  'learn.forWhite': 'for White', 'learn.forBlack': 'for Black', 'learn.allLessons': 'All lessons', 'learn.stepOf': 'Step {i} of {n}',
+  'learn.stalemateRetry': "That's stalemate — a draw! Try again.", 'learn.notQuite': 'Not quite. Try again.',
+  'learn.correctOpp': "Correct! Opponent's move…", 'learn.wrongMove': 'Not that move. Think again.',
+  'learn.view': 'Browse', 'learn.trainWhite': 'Practise as White', 'learn.trainBlack': 'Practise as Black',
+  'learn.startPos': 'Starting position. Press ▶ or the → key.', 'learn.openingDone': 'You played the whole line! Opening learned.',
+  'learn.openingWrong': 'In this opening a different move is played here. Hint — the arrow on the board.',
+
+  // bots
+  'bots.title': 'Play the bots', 'bots.lead': "{n} opponents — from a beginner to the final boss. Beat a bot and it gets a trophy 🏆.",
+  'bots.asWhite': 'As White', 'bots.random': 'Random', 'bots.asBlack': 'As Black', 'bots.all': 'All bots',
+  'bots.thinkingShort': 'thinking…', 'bots.thinking': '{name} is thinking…', 'bots.engineLoading': 'The first engine load may take a few seconds.',
+  'bots.bossBeaten': 'You beat the final boss!', 'bots.again': 'Play again',
+
+  // online
+  'online.title': 'Play online', 'online.authLead': 'Log in or sign up to play rated games. Starting rating: <b>100</b>.',
+  'online.connecting': 'Connecting to the server…', 'online.chooseTc': 'Choose a time control. Opponents are matched by your rating in that category.',
+  'online.tcDesc': '{m} min + {s} sec', 'online.seeking': 'Looking for an opponent <b>{tc}</b> — rating {rating}',
+  'online.seekNote': 'We match players with a similar rating. The search window slowly widens, but never beyond ±200.',
+  'online.cancelSeek': 'Cancel search', 'online.found': 'Opponent found!', 'online.drawSent': 'Draw offer sent',
+  'online.drawDeclined': 'Your opponent declined the draw', 'online.drawOffered': 'Your opponent offers a draw',
+  'online.accept': 'Accept', 'online.decline': 'Decline', 'online.offerDraw': 'Offer draw', 'online.confirmResign': 'Really resign?',
+  'online.ratingNow': 'Rating: {r} ({d})', 'online.unrated': 'Unrated game', 'online.newGame': 'New {tc} game', 'online.lobby': 'Back to lobby',
+  'online.firstMoveYou': 'Make your first move — otherwise the game is aborted', 'online.firstMoveOpp': "Waiting for the opponent's first move", 'online.oppMove': "Opponent's move",
+
+  // analysis
+  'an.title': 'Game analysis', 'an.titleShort': 'Analysis',
+  'an.lead': 'Paste a PGN or a list of moves — Stockfish will review every move and mark it: <b>!!</b> brilliant, <b>!</b> great, <b>!?</b> interesting, <b>?!</b> inaccuracy, <b>?</b> mistake, <b>??</b> blunder.',
+  'an.go': 'Analyse', 'an.note': "Every bot game also has an \"Analyse game\" button.",
+  'an.badPgn': 'Could not read the PGN. Please check the moves.', 'an.noMoves': 'The game has no moves',
+  'an.depth': 'Depth', 'an.fast': 'fast', 'an.normal': 'normal', 'an.deep': 'deep (slow)',
+  'an.loadingEngine': 'Loading engine…', 'an.progress': 'Analysing… {p}%', 'an.accuracy': 'Accuracy',
+  'an.startPos': 'Starting position', 'an.startHint': 'Pick a move in the list or use the ← → keys.', 'an.evalAfter': 'evaluation after the move',
+  'mark.brilliant': 'Brilliant move', 'mark.great': 'Great move', 'mark.best': 'Best move', 'mark.excellent': 'Excellent move', 'mark.good': 'Good move',
+  'mark.book': 'Book move', 'mark.interesting': 'Interesting move', 'mark.inaccuracy': 'Inaccuracy', 'mark.mistake': 'Mistake', 'mark.blunder': 'Blunder',
+  'ev.mate': 'checkmate', 'ev.youMate': 'you have mate in {n}', 'ev.oppMate': 'the opponent has mate in {n}', 'ev.equal': 'equal',
+  'ev.slight.you': 'slight edge for you ({v})', 'ev.slight.opp': 'slight edge for the opponent ({v})',
+  'ev.clear.you': 'clear advantage for you ({v})', 'ev.clear.opp': 'clear advantage for the opponent ({v})',
+  'ev.decisive.you': 'winning advantage for you ({v})', 'ev.decisive.opp': 'winning advantage for the opponent ({v})',
+  'ex.book': 'Book move. This is how masters play.', 'ex.bookNamed': 'Book move ({name}). This is how masters play.',
+  'ex.brilliant': 'Brilliant!! You sacrifice {piece}, and the position only gets better.', 'ex.nowMate': 'Now you have mate in {n}.',
+  'ex.evalIs': 'Evaluation: {e}.', 'ex.great': 'Great move! The only move that holds the position — the rest are clearly worse.',
+  'ex.interesting': 'Interesting!? You give up {piece} for the initiative. Risky, but playable.', 'ex.saferWas': 'Safer was {m}.',
+  'ex.mateDone': 'Checkmate! Game over.', 'ex.best': 'Best move — exactly what the engine would play.',
+  'ex.excellent': 'Excellent move, almost as good as the best one ({m}).', 'ex.good': 'Good move, but {m} was slightly more precise.',
+  'ex.inaccuracy': 'Inaccuracy. The evaluation went from "{before}" to "{after}".', 'ex.mistake': 'Mistake. The evaluation went from "{before}" to "{after}".',
+  'ex.blunder': 'Blunder! The evaluation went from "{before}" to "{after}".', 'ex.betterWas': 'Better was {m}: {line}.',
+  'ex.missedWin': 'You let the win slip.', 'ex.oppMates': 'Now your opponent has mate in {n}: {line}.', 'ex.missedMate': 'You missed mate in {n}!',
+  'ex.hangs': 'It hangs a piece: the opponent replies {m} and wins {piece}.', 'ex.losesMaterial': 'The opponent wins material with {m}.',
+  'ex.oppBest': "The opponent's strongest reply is {m}.",
+
+  // leaderboard & profile
+  'lb.title': 'Leaderboard', 'lb.player': 'Player', 'lb.rating': 'Rating', 'lb.games': 'Games',
+  'lb.empty': 'Nobody has played in this category yet. Be the first!', 'lb.provisional': 'A "?" means the rating is still provisional (too few games).',
+  'profile.stats': 'Wins: <b>{w}</b> · Losses: <b>{l}</b> · Draws: <b>{d}</b>', 'profile.recent': 'Recent games', 'profile.result': 'Result',
+  'profile.tc': 'Time control', 'profile.noGames': 'No games yet.',
+
+  // training
+  'tr.lead': 'Endless exercises: a new position every time. Drill the technique until you get it right without mistakes.',
+  'tr.mates': 'Checkmate technique vs. the engine', 'tr.matesNote': 'The engine defends at full strength and hides its king. Deliver mate without stalemating or losing a piece.',
+  'end.title.kq': 'Queen mate', 'end.title.kr': 'Rook mate', 'end.title.krr': 'Two rooks', 'end.title.kbb': 'Two bishops', 'end.title.kbn': 'Bishop and knight', 'end.title.kpk': 'Pawn to queen',
+  'end.sub.kq': 'King + queen vs. king', 'end.sub.kr': 'King + rook vs. king', 'end.sub.krr': 'King + two rooks vs. king', 'end.sub.kbb': 'King + two bishops vs. king', 'end.sub.kbn': 'King + bishop + knight vs. king', 'end.sub.kpk': 'King and pawn vs. king',
+  'tr.special': 'Special moves', 'tr.ep': 'En passant', 'tr.epSub': 'Can you capture or not? Thousands of random positions',
+  'tr.castle': 'Castling', 'tr.castleSub': 'Which castling moves are allowed right now?',
+  'tr.promo': 'Pawn promotion', 'tr.promoSub': 'Mate by promotion — sometimes you need a knight, not a queen!',
+  'tr.tactics': 'Tactics', 'tr.mate1': 'Mate in 1', 'tr.mate1Sub': 'Find the mate. A streak without mistakes is your record',
+  'tr.all': 'All exercises', 'tr.solved': 'Solved: {n}', 'tr.bestStreak': 'best streak: {n}',
+  'tr.statsLine': 'Solved: <b>{solved}</b> · streak: <b>{streak}</b> · record: <b>{best}</b>',
+  'tr.showSolution': 'Show solution', 'tr.generating': 'Generating a position…',
+  'tr.promoTask': 'White to move. <b>Mate by promoting the pawn.</b> Think about which piece you need — a queen is not always right!',
+  'tr.mate1Task': 'White to move. <b>Mate in 1.</b>', 'tr.mateOk': 'Checkmate! {m}', 'tr.underpromo': '— a knight promotion, underpromotion in action!',
+  'tr.stalemate': "That's stalemate — a draw!", 'tr.checkNotMate': 'Check, but not mate: the king can escape or block.', 'tr.notMate': "That's not mate.",
+  'tr.tryAgain': 'Try again or look at the solution.', 'tr.solution': 'Solution: {m}', 'tr.nextPos': 'Next position',
+  'tr.whiteToMove': 'White to move.', 'tr.blackToMove': 'Black to move.', 'tr.epLast': "The blue arrow is the opponent's last move.",
+  'tr.epQ': 'Can you capture en passant right now?', 'tr.yes': 'Yes, I can', 'tr.no': 'No, I can’t',
+  'tr.ep.yes': 'Yes! The enemy pawn has just made a double step and landed next to your pawn on the 5th rank.',
+  'tr.ep.single': 'Not allowed: the enemy pawn made a normal one-square move. En passant only works after a double step.',
+  'tr.ep.late': 'Not allowed: the double step happened earlier, and the last move was a king move. En passant is only possible immediately.',
+  'tr.ep.rank': 'Not allowed: your pawn is not on the 5th rank (4th for Black), so the enemy pawn did not skip a square your pawn attacks.',
+  'tr.epNowCapture': 'Correct! Now capture the pawn en passant.', 'tr.epDone': '{m} en passant! The enemy pawn is removed even though you moved to an empty square.',
+  'tr.epOther': "That's a different move. Capture the pawn en passant.",
+  'tr.castleRules': 'Rules: no castling if the king or rook has moved, the king is in check, the king passes through or lands on an attacked square, or there are pieces in between.',
+  'tr.known': 'Known', 'tr.note.rookH': 'The h1 rook has already moved (and come back).', 'tr.note.rookA': 'The a1 rook has already moved (and come back).', 'tr.note.king': 'The king has already moved (and come back to e1).',
+  'tr.castleQ': 'Which castling moves are possible now?', 'tr.c.short': 'Kingside only', 'tr.c.long': 'Queenside only', 'tr.c.both': 'Both', 'tr.c.none': 'Neither',
+  'tr.c.shortName': 'Kingside', 'tr.c.longName': 'Queenside', 'tr.allowed': 'allowed', 'tr.wrong': 'Wrong.',
+  'tr.no.check': 'not allowed — the king is in check', 'tr.no.rookMoved': 'not allowed — the {sq} rook has moved', 'tr.no.kingMoved': 'not allowed — the king has moved',
+  'tr.no.blocked': 'not allowed — a piece stands on {sq}', 'tr.no.attacked': 'not allowed — {sq} is attacked',
+  'tr.b1tip': 'Note: an attack on b1 does not stop queenside castling — the king never crosses it.',
+  'tr.howToMate': 'How to mate', 'tr.newPos': 'New position', 'tr.yourMoveWhite': 'Your move (White).',
+  'tr.parCalc': 'The engine is counting how fast mate is possible…', 'tr.par': 'Perfect play — mate in <b>{n}</b>.',
+  'tr.parKbn': 'Mate is possible — usually in 20–33 moves.', 'tr.parWin': 'The position is winning. Deliver mate!',
+  'tr.perfect': 'Perfect — as fast as the engine!', 'tr.engineWould': 'The engine would need {n}.', 'tr.matedIn': (p) => `Mate in ${p.n} ${p.n === 1 ? 'move' : 'moves'}!`,
+  'tr.hintNoStreak': '(Hints were used, so the streak does not count.)',
+  'tr.failStalemate': 'Stalemate — a draw! Leave the enemy king a free square until your mate is ready.',
+  'tr.failPiece': 'Piece lost — not enough material to mate.', 'tr.failRep': 'Threefold repetition — a draw.', 'tr.fail50': '50 moves without mate — a draw by the 50-move rule.',
+  'tr.engineThinking': 'The engine is thinking…', 'tr.searching': 'Looking for the best move…', 'tr.hintShown': 'The best move is shown by the arrow',
+};

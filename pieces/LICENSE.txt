@@ -1,0 +1,3 @@
+Фигуры «cburnett» — автор Colin M.L. Burnett.
+Лицензия: GPLv2+ (те же фигуры используются на lichess.org и в Википедии).
+Источник: https://github.com/lichess-org/chessground
