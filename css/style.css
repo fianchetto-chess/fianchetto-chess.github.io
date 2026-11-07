@@ -269,3 +269,14 @@ textarea { width: 100%; background: var(--bg); color: var(--text); border: 1px s
 .load-box { margin-top: 10px; }
 .load-box summary { cursor: pointer; color: var(--muted); }
 .load-box textarea { margin: 8px 0; }
+
+/* ---------- варианты дебютов ---------- */
+.var-progress { font-size: 14px; color: var(--muted); margin: 6px 0; }
+.var-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.chip { background: var(--bg3); border: 1px solid var(--line); color: var(--text); border-radius: 16px; padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer; text-align: left; }
+.chip:hover { border-color: var(--accent); }
+.chip.active { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+.chip.small { padding: 3px 10px; margin: 3px 4px 0 0; }
+.alts { margin: 6px 0; }
+.alts-title { font-size: 13px; color: var(--inaccuracy); margin-bottom: 2px; }
+.var-tag { display: inline-block; font-size: 12px; color: var(--inaccuracy); margin-left: 6px; }

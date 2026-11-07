@@ -161,4 +161,17 @@ export default {
   "an.load": "Charger",
   "an.toBoard": "Échiquier d'analyse",
   "tr.mateTask": (p) => `Mat en ${p.n}.`,
+  // --- opening variations ---
+  "learn.mainLine": "Ligne principale",
+  "learn.varsLearned": "Lignes apprises : <b>{k}</b> sur {n}",
+  "learn.branchHere": "↪ ici l'adversaire dévie",
+  "learn.altsOpp": "Ici l'adversaire peut aussi jouer :",
+  "learn.altsMine": "Autres coups ici :",
+  "learn.oppChooses": "L'adversaire choisira une des lignes — soyez prêt à toute réponse !",
+  "learn.lineDone": "Ligne apprise : {name}",
+  "learn.allVarsDone": "Toutes les lignes apprises — vous connaissez cette ouverture !",
+  "learn.trainAgain": "S'entraîner encore",
+  "learn.nextVar": "Ligne suivante",
+  "learn.oppDeviates": "L'adversaire a choisi {m} — {name}. Répondez correctement !",
+  "learn.varsN": (p) => `${p.n} ${p.n === 1 ? 'ligne' : 'lignes'}`,
 };

@@ -161,4 +161,17 @@ export default {
   'an.load': "Laden",
   'an.toBoard': "Analysebrett",
   'tr.mateTask': (p) => `Matt in ${p.n}.`,
+  // --- opening variations ---
+  'learn.mainLine': "Hauptvariante",
+  'learn.varsLearned': "Gelernte Varianten: <b>{k}</b> von {n}",
+  'learn.branchHere': "↪ hier weicht der Gegner ab",
+  'learn.altsOpp': "Hier kann der Gegner auch spielen:",
+  'learn.altsMine': "Andere Züge hier:",
+  'learn.oppChooses': "Der Gegner wählt eine der Varianten — sei auf jede Antwort vorbereitet!",
+  'learn.lineDone': "Variante gelernt: {name}",
+  'learn.allVarsDone': "Alle Varianten gelernt — du kennst diese Eröffnung!",
+  'learn.trainAgain': "Nochmal üben",
+  'learn.nextVar': "Nächste Variante",
+  'learn.oppDeviates': "Der Gegner wählte {m} — {name}. Antworte richtig!",
+  'learn.varsN': (p) => `${p.n} ${p.n === 1 ? 'Variante' : 'Varianten'}`,
 };

@@ -161,4 +161,17 @@ export default {
   'an.load': "Yükle",
   'an.toBoard': "Analiz tahtası",
   'tr.mateTask': (p) => `${p.n} hamlede mat.`,
+  // --- opening variations ---
+  'learn.mainLine': "Ana varyant",
+  'learn.varsLearned': "Öğrenilen varyantlar: <b>{k}</b> / {n}",
+  'learn.branchHere': "↪ rakip burada sapıyor",
+  'learn.altsOpp': "Rakip burada şunu da oynayabilir:",
+  'learn.altsMine': "Buradaki diğer hamleler:",
+  'learn.oppChooses': "Rakip varyantlardan birini seçecek — her cevaba hazır olun!",
+  'learn.lineDone': "Varyant öğrenildi: {name}",
+  'learn.allVarsDone': "Tüm varyantlar öğrenildi — bu açılışı biliyorsunuz!",
+  'learn.trainAgain': "Tekrar çalış",
+  'learn.nextVar': "Sonraki varyant",
+  'learn.oppDeviates': "Rakip {m} seçti — {name}. Doğru cevap verin!",
+  'learn.varsN': (p) => `${p.n} varyant`,
 };

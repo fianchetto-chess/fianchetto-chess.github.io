@@ -164,4 +164,17 @@ export default {
   'an.load': "Завантажити",
   'an.toBoard': "Дошка аналізу",
   'tr.mateTask': (p) => `Мат у ${p.n} ${pl(p.n, ['хід', 'ходи', 'ходів'])}.`,
+  // --- opening variations ---
+  'learn.mainLine': "Головний варіант",
+  'learn.varsLearned': "Вивчено варіантів: <b>{k}</b> з {n}",
+  'learn.branchHere': "↪ тут суперник відхиляється",
+  'learn.altsOpp': "Тут суперник може зіграти й так:",
+  'learn.altsMine': "Інші ходи тут:",
+  'learn.oppChooses': "Суперник сам обере варіант — будьте готові до будь-якої відповіді!",
+  'learn.lineDone': "Варіант вивчено: {name}",
+  'learn.allVarsDone': "Усі варіанти вивчено — ви знаєте цей дебют!",
+  'learn.trainAgain': "Тренуватися ще",
+  'learn.nextVar': "Наступний варіант",
+  'learn.oppDeviates': "Суперник обрав {m} — {name}. Відповідайте правильно!",
+  'learn.varsN': (p) => `${p.n} ${pl(p.n, ['варіант', 'варіанти', 'варіантів'])}`,
 };

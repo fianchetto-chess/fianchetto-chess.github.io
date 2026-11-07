@@ -188,4 +188,17 @@ export default {
   'an.load': "Load",
   'an.toBoard': "Analysis board",
   'tr.mateTask': (p) => `Mate in ${p.n}.`,
+  // --- opening variations ---
+  'learn.mainLine': "Main line",
+  'learn.varsLearned': "Lines learned: <b>{k}</b> of {n}",
+  'learn.branchHere': "↪ the opponent deviates here",
+  'learn.altsOpp': "The opponent can also play here:",
+  'learn.altsMine': "Other moves here:",
+  'learn.oppChooses': "The opponent will choose one of the lines — be ready for any reply!",
+  'learn.lineDone': "Line learned: {name}",
+  'learn.allVarsDone': "All lines learned — you know this opening!",
+  'learn.trainAgain': "Train again",
+  'learn.nextVar': "Next line",
+  'learn.oppDeviates': "The opponent chose {m} — {name}. Answer correctly!",
+  'learn.varsN': (p) => `${p.n} ${p.n === 1 ? 'line' : 'lines'}`,
 };

@@ -161,4 +161,17 @@ export default {
   'an.load': "Cargar",
   'an.toBoard': "Tablero de análisis",
   'tr.mateTask': (p) => `Mate en ${p.n}.`,
+  // --- opening variations ---
+  'learn.mainLine': "Línea principal",
+  'learn.varsLearned': "Líneas aprendidas: <b>{k}</b> de {n}",
+  'learn.branchHere': "↪ aquí el rival se desvía",
+  'learn.altsOpp': "Aquí el rival también puede jugar:",
+  'learn.altsMine': "Otras jugadas aquí:",
+  'learn.oppChooses': "El rival elegirá una de las líneas: ¡prepárate para cualquier respuesta!",
+  'learn.lineDone': "Línea aprendida: {name}",
+  'learn.allVarsDone': "¡Todas las líneas aprendidas: dominas esta apertura!",
+  'learn.trainAgain': "Entrenar otra vez",
+  'learn.nextVar': "Siguiente línea",
+  'learn.oppDeviates': "El rival eligió {m} — {name}. ¡Responde bien!",
+  'learn.varsN': (p) => `${p.n} ${p.n === 1 ? 'línea' : 'líneas'}`,
 };

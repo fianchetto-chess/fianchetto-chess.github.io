@@ -1,3 +1,5 @@
+import { VARIATIONS } from './opening-vars.js';
+
 // Lesson content. Texts are {en, ru}; other languages fall back to English.
 // Step types: explore | task | sequence | show
 
@@ -823,3 +825,6 @@ export const OPENINGS = [
       ['c5', 'Black takes space on the queenside.', 'Чёрные берут пространство на ферзевом фланге.'],
     ] },
 ];
+
+// Подключаем ответвления к дебютам
+for (const o of OPENINGS) o.vars = VARIATIONS[o.id] || [];

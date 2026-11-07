@@ -177,4 +177,17 @@ export default {
   'an.load': "Загрузить",
   'an.toBoard': "Доска анализа",
   'tr.mateTask': (p) => `Мат в ${p.n} ${pl(p.n, ['ход', 'хода', 'ходов'])}.`,
+  // --- opening variations ---
+  'learn.mainLine': "Главный вариант",
+  'learn.varsLearned': "Выучено вариантов: <b>{k}</b> из {n}",
+  'learn.branchHere': "↪ здесь соперник отклоняется",
+  'learn.altsOpp': "Здесь соперник может сыграть и так:",
+  'learn.altsMine': "Другие ходы здесь:",
+  'learn.oppChooses': "Соперник сам выберет вариант — будьте готовы к любому ответу!",
+  'learn.lineDone': "Вариант выучен: {name}",
+  'learn.allVarsDone': "Все варианты выучены — вы знаете этот дебют!",
+  'learn.trainAgain': "Тренироваться ещё",
+  'learn.nextVar': "Следующий вариант",
+  'learn.oppDeviates': "Соперник выбрал {m} — {name}. Ответьте правильно!",
+  'learn.varsN': (p) => `${p.n} ${pl(p.n, ['вариант', 'варианта', 'вариантов'])}`,
 };
