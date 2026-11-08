@@ -282,11 +282,11 @@ textarea { width: 100%; background: var(--bg); color: var(--text); border: 1px s
 .var-tag { display: inline-block; font-size: 12px; color: var(--inaccuracy); margin-left: 6px; }
 
 /* ---- задача дня, рейтинг ---- */
-.mini-board{display:grid;grid-template-columns:repeat(8,1fr);aspect-ratio:1;width:100%;border-radius:6px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.35)}
-.mini-board>div{position:relative}
+.mini-board{display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);aspect-ratio:1;width:100%;border-radius:6px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.35)}
+.mini-board>div{position:relative;min-width:0;min-height:0}
 .mini-board .light{background:var(--light)}
 .mini-board .dark{background:var(--dark)}
-.mini-board img{width:100%;height:100%;display:block}
+.mini-board img{position:absolute;inset:0;width:100%;height:100%;display:block}
 .home-daily{display:flex;gap:28px;align-items:center;margin-top:24px;flex-wrap:wrap}
 .home-daily .hd-board{flex:0 0 240px;max-width:240px;width:240px}
 .home-daily .hd-text{flex:1;min-width:220px}
