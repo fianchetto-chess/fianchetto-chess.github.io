@@ -292,7 +292,7 @@ textarea { width: 100%; background: var(--bg); color: var(--text); border: 1px s
 .home-daily .hd-text{flex:1;min-width:220px}
 .home-daily h2{margin:0 0 6px}
 .hd-stats{opacity:.85;margin:.4em 0 1em}
-.train-top{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0 28px}
+.train-top{display:grid;grid-template-columns:1fr;max-width:560px;gap:16px;margin:16px 0 28px}
 .train-top .card{display:flex;flex-direction:column;gap:6px}
 .daily-card .card-stat{margin-top:auto;font-weight:600;opacity:.9}
 .big-rating{font-size:2.4em;font-weight:800;line-height:1.1;color:var(--accent,#7fa650)}

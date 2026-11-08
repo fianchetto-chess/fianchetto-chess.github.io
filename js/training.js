@@ -45,25 +45,11 @@ function result(k, ok) {
 
 const QUIZ_LEVELS = 15;
 
-// ---------- рейтинг в задачах (как на chess.com) ----------
-// Сложность задачи переводится в рейтинг по её месту в отсортированном списке
+// сложность задачи по её месту в отсортированном списке (для подбора задач дня)
 const RANGES = { mate1: [400, 1400], mate2: [900, 1900], mate3: [1300, 2400], tactic: [600, 2200], promo: [500, 1700], daily: [1000, 1900] };
-export const puzzleRating = () => store.get('prating', { r: 800, best: 800, n: 0 });
 function puzzleElo(track, i, n) {
   const [lo, hi] = RANGES[track] || [800, 1600];
   return Math.round(lo + (hi - lo) * (n > 1 ? i / (n - 1) : 0.5));
-}
-function ratePuzzle(track, i, n, ok) {
-  const pr = puzzleElo(track, i, n);
-  const u = puzzleRating();
-  const expected = 1 / (1 + 10 ** ((pr - u.r) / 400));
-  const k = u.n < 20 ? 40 : 20; // первые задачи меняют рейтинг сильнее
-  const diff = Math.round(k * ((ok ? 1 : 0) - expected));
-  u.r = Math.max(100, u.r + diff);
-  u.best = Math.max(u.best, u.r);
-  u.n++;
-  store.set('prating', u);
-  return diff;
 }
 
 // ---------- задачи дня: 30 сложных задач, каждая сложнее предыдущей ----------
@@ -131,7 +117,6 @@ export async function renderTraining(root) {
     return `<a class="card train-card" href="${href}"><div class="card-title">${title}</div><div class="card-sub">${sub}</div>
       ${total ? progressHtml(i, total) : ''}${i >= total && total ? `<div class="card-stat">✓ ${t('tr.trackDone')}</div>` : ''}</a>`;
   };
-  const pr = puzzleRating();
   const dp = dailyProgress();
   root.innerHTML = `
     <h1>${t('nav.train')}</h1>
@@ -140,9 +125,6 @@ export async function renderTraining(root) {
       <a class="card daily-card" href="#/train/p/daily"><div class="card-title">📅 ${t('daily.title')}</div>
         <div class="card-sub">${dp >= DAILY_N ? `✓ ${t('daily.doneToday')}` : t('daily.cta')}</div>
         <div class="card-stat">${t('daily.progress', { n: dp, total: DAILY_N })}</div></a>
-      <div class="card"><div class="card-title">🏆 ${t('daily.ratingTitle')}</div>
-        <div class="big-rating">${pr.r}</div>
-        <div class="card-sub">${t('daily.ratingSub', { best: pr.best, n: pr.n })}</div></div>
     </div>
     <h2>⚔ ${t('tr.tactics')}</h2>
     <div class="cards">${PUZZLE_TRACKS.map((tr) => levelCard(`#/train/p/${tr.id}`, `${tr.icon} ${t(tr.title)}`, t(tr.sub), tr.id)).join('')}</div>
@@ -201,7 +183,7 @@ function markSolved(key, L, k) {
   return set.size;
 }
 const levelDone = (key, L) => solvedIn(key, L) >= PER;
-const levelOpen = (key, L) => L === 0 || levelDone(key, L - 1);
+const levelOpen = () => true; // все уровни доступны сразу
 const levelsDone = (key) => { let n = 0; for (let L = 0; L < LEVELS; L++) if (levelDone(key, L)) n++; return n; };
 // 200 задач из отсортированного по сложности списка — равномерно от лёгких к трудным
 const levelSet = (list) => Array.from({ length: LEVELS * PER }, (_, i) => list[Math.floor((i * (list.length - 1)) / (LEVELS * PER - 1))]);
@@ -218,7 +200,6 @@ function renderLevels(root, { key, title, base, extra = '' }) {
     <p class="lead">${t('lv.lead', { n: LEVELS, per: PER })}</p>
     <div class="levels">${Array.from({ length: LEVELS }, (_, L) => {
       const n = solvedIn(key, L);
-      if (!levelOpen(key, L)) return `<div class="lv-tile locked"><div class="lv-num">🔒 ${L + 1}</div><div class="lv-sub">${t('lv.locked')}</div></div>`;
       return `<a class="lv-tile ${n >= PER ? 'done' : ''}" href="${base}/${L + 1}"><div class="lv-num">${L + 1}</div>
         <div class="lv-sub">${n >= PER ? `✓ ${t('lv.passed')}` : t('lv.solvedN', { n, per: PER })}</div>
         <div class="lvl-bar"><div style="width:${Math.round((n / PER) * 100)}%"></div></div></a>`;
@@ -301,22 +282,16 @@ export async function renderPuzzleTrack(root, track, lvArg) {
     setup(list[i]);
   }
 
-  const rate = (ok) => (isDaily ? null : ratePuzzle(track, L * PER + i, LEVELS * PER, ok));
   function markFail() {
     if (failed) return null;
     failed = true;
     result(track, false);
-    return rate(false);
-  }
-  function ratingNote(diff) {
-    return diff === null ? '' : ` <span class="rating-delta ${diff >= 0 ? 'up' : 'down'}">${t('daily.rating', { r: puzzleRating().r })} (${diff >= 0 ? '+' : ''}${diff})</span>`;
   }
 
   function win() {
     solved = true;
     board.setMovable(null);
-    let diff = null;
-    if (!failed) { result(track, true); diff = rate(true); }
+    if (!failed) result(track, true);
     playSound('end');
     if (isDaily) {
       setProg(track, Math.max(getProg(track), i + 1));
@@ -330,12 +305,11 @@ export async function renderPuzzleTrack(root, track, lvArg) {
     showInfo();
     btn('next').disabled = false;
     if (n >= PER && before < PER) { fb(root, levelCompleteHtml(base, L), 'ok'); return; }
-    fb(root, `✅ ${failed ? t('tr.solvedAfterTry') : t('lv.taskSolved')}${ratingNote(diff)}`, 'ok');
+    fb(root, `✅ ${failed ? t('tr.solvedAfterTry') : t('lv.taskSolved')}`, 'ok');
   }
 
   function lose(msg) {
-    const d = markFail();
-    if (d !== null) msg += ratingNote(d);
+    markFail();
     playSound('wrong');
     fb(root, `❌ ${msg}`, 'bad');
   }

@@ -201,9 +201,6 @@ export default {
   'learn.oppDeviates': "The opponent chose {m} — {name}. Answer correctly!",
   'learn.varsN': (p) => `${p.n} ${p.n === 1 ? 'line' : 'lines'}`,
   // daily puzzle & rating
-  'daily.rating': (p) => `Rating: ${p.r}`,
-  'daily.ratingTitle': "Puzzle rating",
-  'daily.ratingSub': (p) => `Best: ${p.best} · solved ${p.n}`,
   'daily.title': 'Puzzles of the day',
   'daily.cta': "Solve today's puzzles",
   'daily.doneToday': "All today's puzzles solved",
@@ -214,9 +211,6 @@ export default {
   'tr.levelFree': (p) => `Level ${p.i} · random positions`,
   'tr.generating': "Preparing a new position…",
   'daily.lead': (p) => `${p.total} hard puzzles every day, each harder than the last.`,
-  'tr.lead': "Every training has 10 levels of 20 puzzles, each level harder than the last. Solve all 20 to unlock the next level.",
-  'lv.lead': (p) => `${p.n} levels of ${p.per} puzzles. Solve every puzzle in a level to unlock the next one.`,
-  'lv.locked': "Pass the previous level",
   'lv.passed': "Passed",
   'lv.solvedN': (p) => `${p.n}/${p.per} solved`,
   'lv.levelN': (p) => `Level ${p.l} of ${p.n}`,
@@ -228,4 +222,6 @@ export default {
   'lv.toLevels': "Levels",
   'lv.taskSolved': "Solved!",
   'lv.solutionShown': "Here is the solution. The puzzle is not counted — press “Restart” and solve it yourself, or go to the next one.",
+  'tr.lead': "Every training has 10 levels of 20 puzzles, from easy to hard. Pick any level.",
+  'lv.lead': (p) => `${p.n} levels of ${p.per} puzzles, each harder than the last. Start with any level.`,
 };
