@@ -145,20 +145,20 @@ export async function renderTraining(root) {
         <div class="card-sub">${t('daily.ratingSub', { best: pr.best, n: pr.n })}</div></div>
     </div>
     <h2>⚔ ${t('tr.tactics')}</h2>
-    <div class="cards">${PUZZLE_TRACKS.map((tr) => `<a class="card train-card" href="#/train/p/${tr.id}"><div class="card-title">${tr.icon} ${t(tr.title)}</div><div class="card-sub">${t(tr.sub)}</div>${endlessHtml(trackState(tr.id, data[tr.id].length))}</a>`).join('')}</div>
+    <div class="cards">${PUZZLE_TRACKS.map((tr) => levelCard(`#/train/p/${tr.id}`, `${tr.icon} ${t(tr.title)}`, t(tr.sub), tr.id)).join('')}</div>
     <h2>♔ ${t('tr.mates')}</h2>
     <p class="muted">${t('tr.matesNote')}</p>
-    <div class="cards">${Object.entries(ENDGAMES).map(([k, e]) => card(`#/train/end/${k}`, `${e.icon} ${t('end.title.' + k)}`, t('end.sub.' + k), 'end-' + k, (data.end[k] || []).length)).join('')}</div>
+    <div class="cards">${Object.entries(ENDGAMES).map(([k, e]) => levelCard(`#/train/end/${k}`, `${e.icon} ${t('end.title.' + k)}`, t('end.sub.' + k), 'end-' + k)).join('')}</div>
     <h2>♙ ${t('tr.special')}</h2>
     <div class="cards">
-      ${card('#/train/ep', `⇗ ${t('tr.ep')}`, t('tr.epSub'), 'ep', QUIZ_LEVELS)}
-      ${card('#/train/castle', `♜ ${t('tr.castle')}`, t('tr.castleSub'), 'castle', QUIZ_LEVELS)}
+      ${levelCard('#/train/ep', `⇗ ${t('tr.ep')}`, t('tr.epSub'), 'ep')}
+      ${levelCard('#/train/castle', `♜ ${t('tr.castle')}`, t('tr.castleSub'), 'castle')}
     </div>`;
 }
 
-function shell(root, title, extra = '') {
+function shell(root, title, extra = '', back = '#/train') {
   root.innerHTML = `
-    <a href="#/train" class="back">← ${t('tr.all')}</a>
+    <a href="${back}" class="back">← ${back === '#/train' ? t('tr.all') : t('lv.toLevels')}</a>
     <div class="game-layout">
       <div class="board-col"><div id="tboard"></div></div>
       <div class="side-col panel">
@@ -187,41 +187,80 @@ function setLevel(root, key, i, n) {
 }
 
 // ---------- Задачи: мат в 1/2/3, найди выигрывающий ход, превращение ----------
-// ---------- бесконечные треки: сложность растёт с каждой решённой задачей ----------
-const STEP_UP = 1 / 30, STEP_DOWN = 1 / 60;
-function trackState(track, len) {
-  const s = store.get('trk-' + track, null);
-  if (s && Array.isArray(s.seen)) return s;
-  // переносим прежний прогресс по уровням
-  return { pos: len ? Math.min(1, getProg(track) / len) : 0, n: 0, seen: [] };
+// ---------- уровни: в каждой тренировке 10 уровней по 20 задач ----------
+export const LEVELS = 10, PER = 20;
+const lvState = (key) => store.get('lv-' + key, { done: {} });
+const solvedSet = (key, L) => new Set(lvState(key).done[L] || []);
+const solvedIn = (key, L) => solvedSet(key, L).size;
+function markSolved(key, L, k) {
+  const s = lvState(key);
+  const set = new Set(s.done[L] || []);
+  set.add(k);
+  s.done[L] = [...set];
+  store.set('lv-' + key, s);
+  return set.size;
 }
-const saveTrack = (track, s) => store.set('trk-' + track, { pos: s.pos, n: s.n, seen: s.seen.slice(-400) });
-const diffLevel = (pos) => Math.min(10, 1 + Math.floor(pos * 10));
-function pickIndex(len, s) {
-  const center = Math.round(s.pos * (len - 1));
-  const seen = new Set(s.seen);
-  for (let half = Math.max(8, Math.round(len * 0.04)); half < len * 2; half *= 2) {
-    const c = [];
-    for (let j = Math.max(0, center - half); j <= Math.min(len - 1, center + half); j++) if (!seen.has(j)) c.push(j);
-    if (c.length) return c[Math.floor(Math.random() * c.length)];
-  }
-  s.seen = [];
-  return Math.floor(Math.random() * len);
-}
-function endlessHtml(st) {
-  const d = diffLevel(st.pos);
-  return `<div class="lvl-bar"><div style="width:${d * 10}%"></div></div><div class="lvl-text">${t('tr.endlessInfo', { n: st.n, d })}</div>`;
+const levelDone = (key, L) => solvedIn(key, L) >= PER;
+const levelOpen = (key, L) => L === 0 || levelDone(key, L - 1);
+const levelsDone = (key) => { let n = 0; for (let L = 0; L < LEVELS; L++) if (levelDone(key, L)) n++; return n; };
+// 200 задач из отсортированного по сложности списка — равномерно от лёгких к трудным
+const levelSet = (list) => Array.from({ length: LEVELS * PER }, (_, i) => list[Math.floor((i * (list.length - 1)) / (LEVELS * PER - 1))]);
+const clampLevel = (arg) => Math.max(0, Math.min(LEVELS - 1, (Number(arg) || 1) - 1));
+function firstUnsolved(key, L) { const s = solvedSet(key, L); for (let k = 0; k < PER; k++) if (!s.has(k)) return k; return 0; }
+function nextUnsolved(key, L, i) { const s = solvedSet(key, L); for (let j = 1; j <= PER; j++) { const k = (i + j) % PER; if (!s.has(k)) return k; } return (i + 1) % PER; }
+
+// экран выбора уровня
+function renderLevels(root, { key, title, base, extra = '' }) {
+  root.innerHTML = `
+    <a href="#/train" class="back">← ${t('tr.all')}</a>
+    <h1>${title}</h1>
+    ${extra}
+    <p class="lead">${t('lv.lead', { n: LEVELS, per: PER })}</p>
+    <div class="levels">${Array.from({ length: LEVELS }, (_, L) => {
+      const n = solvedIn(key, L);
+      if (!levelOpen(key, L)) return `<div class="lv-tile locked"><div class="lv-num">🔒 ${L + 1}</div><div class="lv-sub">${t('lv.locked')}</div></div>`;
+      return `<a class="lv-tile ${n >= PER ? 'done' : ''}" href="${base}/${L + 1}"><div class="lv-num">${L + 1}</div>
+        <div class="lv-sub">${n >= PER ? `✓ ${t('lv.passed')}` : t('lv.solvedN', { n, per: PER })}</div>
+        <div class="lvl-bar"><div style="width:${Math.round((n / PER) * 100)}%"></div></div></a>`;
+    }).join('')}</div>`;
 }
 
-export async function renderPuzzleTrack(root, track) {
+// полоска из 20 задач текущего уровня
+function stripHtml(key, L, cur, quiz = false) {
+  const s = solvedSet(key, L);
+  const n = s.size;
+  const cells = Array.from({ length: PER }, (_, k) => {
+    const done = quiz ? k < n : s.has(k);
+    return `<button class="ts ${done ? 'done' : ''} ${k === cur ? 'cur' : ''}" data-k="${k}" ${quiz ? 'disabled' : ''}>${k + 1}</button>`;
+  }).join('');
+  return `<div class="lvl-text">${t('lv.levelN', { l: L + 1, n: LEVELS })} · ${t('lv.solvedN', { n: Math.min(n, PER), per: PER })}</div><div class="task-strip">${cells}</div>`;
+}
+function levelCompleteHtml(base, L) {
+  return L + 1 < LEVELS
+    ? `🎉 <b>${t('lv.complete', { l: L + 1 })}</b> <a class="btn primary" href="${base}/${L + 2}">${t('lv.nextLevel', { l: L + 2 })} →</a>`
+    : `🏆 <b>${t('lv.allDone')}</b>`;
+}
+function levelCard(href, title, sub, key) {
+  const d = levelsDone(key);
+  return `<a class="card train-card" href="${href}"><div class="card-title">${title}</div><div class="card-sub">${sub}</div>
+    <div class="lvl-bar"><div style="width:${d * 10}%"></div></div><div class="lvl-text">${t('lv.cardDone', { n: d, total: LEVELS })}</div>
+    ${d >= LEVELS ? `<div class="card-stat">✓ ${t('tr.trackDone')}</div>` : ''}</a>`;
+}
+
+export async function renderPuzzleTrack(root, track, lvArg) {
   const isDaily = track === 'daily';
   const tr = isDaily ? { id: 'daily', icon: '📅', title: 'daily.title' } : PUZZLE_TRACKS.find((x) => x.id === track);
   if (!tr) { location.hash = '#/train'; return; }
+  const base = `#/train/p/${track}`;
+  const title = `${tr.icon} ${t(tr.title)}`;
+  if (!isDaily && !lvArg) { renderLevels(root, { key: track, title, base }); return; }
+  const L = isDaily ? 0 : clampLevel(lvArg);
+  if (!isDaily && !levelOpen(track, L)) { location.hash = base; return; }
   if (isDaily) dailyProgress();
-  const board = shell(root, `${tr.icon} ${t(tr.title)}`);
+  const board = shell(root, isDaily ? title : `${title} · ${t('lv.level', { l: L + 1 })}`, '', isDaily ? '#/train' : base);
   const data = await loadData();
   if (!alive(board)) return;
-  const list = isDaily ? dailyPuzzles(data) : data[track];
+  const list = isDaily ? dailyPuzzles(data) : levelSet(data[track]).slice(L * PER, L * PER + PER);
   const tacticLike = (z) => track === 'tactic' || (isDaily && !z.n);
   const engine = getEngine();
   root.querySelector('.controls').innerHTML = `
@@ -230,12 +269,11 @@ export async function renderPuzzleTrack(root, track) {
     <button class="btn" id="retry">↻ ${t('tr.retry')}</button>
     <button class="btn primary" id="next">${t('common.next')} →</button>`;
   const btn = (id) => root.querySelector('#' + id);
-  const st = isDaily ? null : trackState(track, list.length);
   let i = 0, pz, chess, color, need, failed, solved, busy, hintStep, token = 0;
 
   function showInfo() {
     if (isDaily) { setLevel(root, track, i, list.length); return; }
-    root.querySelector('.lvl').innerHTML = endlessHtml(st);
+    root.querySelector('.lvl').innerHTML = stripHtml(track, L, i);
     const s = stats(track);
     root.querySelector('.train-stats').innerHTML = t('tr.statsLine', { solved: s.solved, streak: s.streak, best: s.best });
   }
@@ -255,45 +293,21 @@ export async function renderPuzzleTrack(root, track) {
     const task = pz.n ? t('tr.mateTask', { n: pz.n }) : track === 'promo' ? t('tr.promoTask2') : t('tr.tacticTask');
     root.querySelector('.task').innerHTML = `${side} <b>${task}</b>`;
     fb(root, '');
-    btn('next').disabled = true;
+    btn('next').disabled = isDaily;
   }
 
-  function load(idx) { // задачи дня — по порядку
+  function load(idx) {
     i = Math.max(0, Math.min(idx, list.length - 1));
     setup(list[i]);
   }
 
-  async function loadNext() { // бесконечный трек — случайная задача нужной сложности
-    if (track === 'promo' && Math.random() < 0.4) {
-      try {
-        const g = await gen('genPromotionMate');
-        if (!alive(board)) return;
-        i = -1;
-        setup({ f: g.fen, s: g.mates[0] });
-        return;
-      } catch { /* берём из базы */ }
-    }
-    i = pickIndex(list.length, st);
-    st.seen.push(i);
-    saveTrack(track, st);
-    setup(list[i]);
-  }
-
-  // рейтинг меняется только в обычных треках и только для задач из базы
-  const rate = (ok) => (isDaily || i < 0 ? null : ratePuzzle(track, i, list.length, ok));
-  function adjust(ok) {
-    if (isDaily) return;
-    st.pos = Math.max(0, Math.min(1, st.pos + (ok ? STEP_UP : -STEP_DOWN)));
-    saveTrack(track, st);
-  }
+  const rate = (ok) => (isDaily ? null : ratePuzzle(track, L * PER + i, LEVELS * PER, ok));
   function markFail() {
     if (failed) return null;
     failed = true;
     result(track, false);
-    adjust(false);
     return rate(false);
   }
-
   function ratingNote(diff) {
     return diff === null ? '' : ` <span class="rating-delta ${diff >= 0 ? 'up' : 'down'}">${t('daily.rating', { r: puzzleRating().r })} (${diff >= 0 ? '+' : ''}${diff})</span>`;
   }
@@ -302,7 +316,7 @@ export async function renderPuzzleTrack(root, track) {
     solved = true;
     board.setMovable(null);
     let diff = null;
-    if (!failed) { result(track, true); diff = rate(true); adjust(true); }
+    if (!failed) { result(track, true); diff = rate(true); }
     playSound('end');
     if (isDaily) {
       setProg(track, Math.max(getProg(track), i + 1));
@@ -311,11 +325,12 @@ export async function renderPuzzleTrack(root, track) {
       showInfo();
       return;
     }
-    st.n++;
-    saveTrack(track, st);
-    fb(root, `✅ ${failed ? t('tr.solvedAfterTry') : t('tr.solvedHarder')}${ratingNote(diff)}`, 'ok');
-    btn('next').disabled = false;
+    const before = solvedIn(track, L);
+    const n = markSolved(track, L, i);
     showInfo();
+    btn('next').disabled = false;
+    if (n >= PER && before < PER) { fb(root, levelCompleteHtml(base, L), 'ok'); return; }
+    fb(root, `✅ ${failed ? t('tr.solvedAfterTry') : t('lv.taskSolved')}${ratingNote(diff)}`, 'ok');
   }
 
   function lose(msg) {
@@ -323,11 +338,6 @@ export async function renderPuzzleTrack(root, track) {
     if (d !== null) msg += ratingNote(d);
     playSound('wrong');
     fb(root, `❌ ${msg}`, 'bad');
-  }
-
-  async function opponentReply(fen) {
-    const r = await engine.analyse(fen, { depth: 12 });
-    return r.bestmove;
   }
 
   board.onMove = async (from, to, promotion) => {
@@ -414,7 +424,6 @@ export async function renderPuzzleTrack(root, track) {
     markFail();
     busy = true;
     const my = token;
-    // проигрываем решение на доске
     let line = pz.p && pz.p.length ? pz.p : [pz.s];
     chess.load(pz.f);
     board.fromChess(chess, { movable: null, lastMove: null, animate: false });
@@ -429,33 +438,55 @@ export async function renderPuzzleTrack(root, track) {
     }
     busy = false;
     solved = true;
-    fb(root, t(isDaily ? 'tr.solutionShown' : 'tr.solutionShownNext'));
+    fb(root, t(isDaily ? 'tr.solutionShown' : 'lv.solutionShown'));
     if (isDaily) setProg(track, Math.max(getProg(track), i + 1));
     btn('next').disabled = isDaily && i + 1 >= list.length;
   };
   btn('retry').onclick = () => setup(pz);
-  btn('next').onclick = () => (isDaily ? load(i + 1) : loadNext());
+  btn('next').onclick = () => load(isDaily ? i + 1 : nextUnsolved(track, L, i));
   root.querySelector('.lvl').onclick = (e) => {
-    if (!isDaily || !e.target.closest('.lvl-bar')) return;
-    const r = e.target.closest('.lvl-bar').getBoundingClientRect();
-    const target = Math.floor(((e.clientX - r.left) / r.width) * list.length);
-    if (target <= getProg(track)) load(target); // можно вернуться к пройденным задачам
+    if (isDaily) {
+      if (!e.target.closest('.lvl-bar')) return;
+      const r = e.target.closest('.lvl-bar').getBoundingClientRect();
+      const target = Math.floor(((e.clientX - r.left) / r.width) * list.length);
+      if (target <= getProg(track)) load(target);
+      return;
+    }
+    const b = e.target.closest('.ts');
+    if (b) load(Number(b.dataset.k));
   };
   root._cleanup = () => { token++; engine.stop(); };
-  if (isDaily) load(Math.min(getProg(track), list.length - 1)); else loadNext();
+  load(isDaily ? Math.min(getProg(track), list.length - 1) : firstUnsolved(track, L));
 }
 
 // ---------- Взятие на проходе: «можно или нельзя?» (уровни) ----------
-export function renderEnPassant(root) {
+// сложность генератора (0…14) для уровня 1…10
+const quizDiff = (L) => Math.round((L * (QUIZ_LEVELS - 1)) / (LEVELS - 1));
+function quizDone(root, key, L, base, ok) {
+  result(key, ok);
+  playSound(ok ? 'end' : 'wrong');
+  let complete = false;
+  if (ok) {
+    const before = solvedIn(key, L);
+    if (before < PER) complete = markSolved(key, L, before) >= PER;
+  }
+  root.querySelector('.lvl').innerHTML = stripHtml(key, L, Math.min(solvedIn(key, L), PER - 1), true);
+  return complete ? levelCompleteHtml(base, L) : '';
+}
+
+export function renderEnPassant(root, lvArg) {
   const key = 'ep';
-  const board = shell(root, `⇗ ${t('tr.ep')}`);
+  const base = '#/train/ep';
+  if (!lvArg) { renderLevels(root, { key, title: `⇗ ${t('tr.ep')}`, base }); return; }
+  const L = clampLevel(lvArg);
+  if (!levelOpen(key, L)) { location.hash = base; return; }
+  const board = shell(root, `⇗ ${t('tr.ep')} · ${t('lv.level', { l: L + 1 })}`, '', base);
   root.querySelector('.controls').innerHTML = `<button class="btn primary" id="nexte">${t('tr.nextPos')} →</button>`;
-  let task, chess, stage, level;
+  let task, chess, stage;
 
   async function next() {
-    level = Math.min(getProg(key), QUIZ_LEVELS - 1);
-    setLevel(root, key, level, QUIZ_LEVELS);
-    task = await gen('genEnPassant', level);
+    root.querySelector('.lvl').innerHTML = stripHtml(key, L, Math.min(solvedIn(key, L), PER - 1), true);
+    task = await gen('genEnPassant', quizDiff(L));
     if (!alive(board)) return;
     chess = new Chess(task.fen);
     stage = 'ask';
@@ -466,12 +497,8 @@ export function renderEnPassant(root) {
     root.querySelector('.answers').innerHTML = `<button class="btn" data-a="1">${t('tr.yes')}</button><button class="btn" data-a="0">${t('tr.no')}</button>`;
     fb(root, '');
   }
-  function done(ok) {
-    result(key, ok);
-    if (ok) setProg(key, Math.min(QUIZ_LEVELS, getProg(key) + 1));
-    setLevel(root, key, Math.min(getProg(key), QUIZ_LEVELS - 1), QUIZ_LEVELS);
-    playSound(ok ? 'end' : 'wrong');
-  }
+  let extraMsg = '';
+  function done(ok) { extraMsg = quizDone(root, key, L, base, ok); }
 
   root.querySelector('.answers').onclick = (e) => {
     const b = e.target.closest('button[data-a]');
@@ -485,7 +512,7 @@ export function renderEnPassant(root) {
       stage = 'done';
       return;
     }
-    if (!task.can) { done(true); fb(root, `✅ ${t('common.correct')} ${t('tr.ep.' + task.reason)}`, 'ok'); stage = 'done'; return; }
+    if (!task.can) { done(true); fb(root, `✅ ${t('common.correct')} ${t('tr.ep.' + task.reason)}${extraMsg ? `<br>${extraMsg}` : ''}`, 'ok'); stage = 'done'; return; }
     stage = 'move';
     fb(root, `👍 ${t('tr.epNowCapture')}`, 'ok');
     board.fromChess(chess, { movable: task.color, lastMove: task.lastMove, animate: false });
@@ -499,7 +526,7 @@ export function renderEnPassant(root) {
     board.setArrows([]);
     if (mv.flags.includes('e')) {
       done(true);
-      fb(root, `✅ ${t('tr.epDone', { m: mv.san })}`, 'ok');
+      fb(root, `✅ ${t('tr.epDone', { m: mv.san })}${extraMsg ? `<br>${extraMsg}` : ''}`, 'ok');
       stage = 'done';
     } else {
       fb(root, `❌ ${t('tr.epOther')}`, 'bad');
@@ -511,16 +538,19 @@ export function renderEnPassant(root) {
 }
 
 // ---------- Рокировка (уровни) ----------
-export function renderCastling(root) {
+export function renderCastling(root, lvArg) {
   const key = 'castle';
-  const board = shell(root, `♜ ${t('tr.castle')}`, `<p class="muted">${t('tr.castleRules')}</p>`);
+  const base = '#/train/castle';
+  if (!lvArg) { renderLevels(root, { key, title: `♜ ${t('tr.castle')}`, base, extra: `<p class="muted">${t('tr.castleRules')}</p>` }); return; }
+  const L = clampLevel(lvArg);
+  if (!levelOpen(key, L)) { location.hash = base; return; }
+  const board = shell(root, `♜ ${t('tr.castle')} · ${t('lv.level', { l: L + 1 })}`, `<p class="muted">${t('tr.castleRules')}</p>`, base);
   root.querySelector('.controls').innerHTML = `<button class="btn primary" id="nextc">${t('tr.nextPos')} →</button>`;
   let task, stage;
 
   async function next() {
-    const level = Math.min(getProg(key), QUIZ_LEVELS - 1);
-    setLevel(root, key, level, QUIZ_LEVELS);
-    task = await gen('genCastling', level);
+    root.querySelector('.lvl').innerHTML = stripHtml(key, L, Math.min(solvedIn(key, L), PER - 1), true);
+    task = await gen('genCastling', quizDiff(L));
     if (!alive(board)) return;
     stage = 'ask';
     const chess = new Chess(task.fen);
@@ -539,10 +569,7 @@ export function renderCastling(root) {
     if (!b || stage !== 'ask') return;
     stage = 'done';
     const ok = b.dataset.a === task.answer;
-    result(key, ok);
-    if (ok) setProg(key, Math.min(QUIZ_LEVELS, getProg(key) + 1));
-    setLevel(root, key, Math.min(getProg(key), QUIZ_LEVELS - 1), QUIZ_LEVELS);
-    playSound(ok ? 'end' : 'wrong');
+    const extraMsg = quizDone(root, key, L, base, ok);
     root.querySelectorAll('.answers button').forEach((x) => {
       x.disabled = true;
       if (x.dataset.a === task.answer) x.classList.add('primary');
@@ -551,25 +578,30 @@ export function renderCastling(root) {
     board.setHints(['b1', 'c1', 'd1', 'e1', 'f1', 'g1'].filter((sq) => c.isAttacked(sq, 'b')).map((sq) => ({ sq, cls: 'hint-attacked' })));
     const ex = task.explain;
     const side = (k) => `${t('tr.c.' + k + 'Name')}: ${ex[k] ? t('tr.no.' + ex[k].code, { sq: ex[k].squares || '' }) : t('tr.allowed')}.`;
-    fb(root, `${ok ? `✅ ${t('common.correct')}` : `❌ ${t('tr.wrong')}`} ${side('short')} ${side('long')}${ex.b1tip ? ` ${t('tr.b1tip')}` : ''}`, ok ? 'ok' : 'bad');
+    fb(root, `${ok ? `✅ ${t('common.correct')}` : `❌ ${t('tr.wrong')}`} ${side('short')} ${side('long')}${ex.b1tip ? ` ${t('tr.b1tip')}` : ''}${extraMsg ? `<br>${extraMsg}` : ''}`, ok ? 'ok' : 'bad');
   };
   root.querySelector('#nextc').onclick = next;
   next();
 }
 
 // ---------- Техника мата против движка (уровни: от короткого мата к длинному) ----------
-export async function renderEndgame(root, type) {
+export async function renderEndgame(root, type, lvArg) {
   const cfg = ENDGAMES[type];
   if (!cfg) { location.hash = '#/train'; return; }
   const key = 'end-' + type;
-  const board = shell(root, `${cfg.icon} ${t('end.title.' + type)}`, `<details class="theory" ${getProg(key) < 2 ? 'open' : ''}><summary>${t('tr.howToMate')}</summary><p>${tx(THEORY[type])}</p></details>`);
+  const base = `#/train/end/${type}`;
+  const theory = (open) => `<details class="theory" ${open ? 'open' : ''}><summary>${t('tr.howToMate')}</summary><p>${tx(THEORY[type])}</p></details>`;
+  if (!lvArg) { renderLevels(root, { key, title: `${cfg.icon} ${t('end.title.' + type)}`, base, extra: theory(levelsDone(key) === 0) }); return; }
+  const L = clampLevel(lvArg);
+  if (!levelOpen(key, L)) { location.hash = base; return; }
+  const board = shell(root, `${cfg.icon} ${t('end.title.' + type)} · ${t('lv.level', { l: L + 1 })}`, theory(false), base);
   root.querySelector('.controls').innerHTML = `
     <button class="btn" id="hintE">💡 ${t('common.hint')}</button>
     <button class="btn" id="undoE">↶ ${t('common.takeback')}</button>
     <button class="btn" id="resetE">↻ ${t('common.retry')}</button>
     <button class="btn primary" id="nextE">${t('common.next')} →</button>`;
   root.querySelector('.task').innerHTML = '<div class="par"></div><div class="moves" id="emoves"></div>';
-  const list = (await loadData()).end[type];
+  const list = levelSet((await loadData()).end[type]).slice(L * PER, L * PER + PER);
   const engine = getEngine();
   let i, startFen, chess, over, busy, token = 0, par = null, hinted = false;
 
@@ -581,28 +613,9 @@ export async function renderEndgame(root, type) {
     box.scrollTop = box.scrollHeight;
   }
 
-  // после готовых уровней — бесконечные случайные позиции, проверенные движком
-  async function load(idx) {
-    token++;
-    const my = token;
-    i = Math.max(0, idx);
-    if (i < list.length) { start(list[i].f, list[i].n); return; }
-    over = true; busy = true;
-    board.setMovable(null);
-    fb(root, t('tr.generating'));
-    for (let a = 0; a < 8; a++) {
-      let fen;
-      try { fen = await gen('genEndgame', type); } catch { continue; }
-      const r = await engine.analyse(fen, { depth: 16 });
-      if (my !== token || !alive(board)) return;
-      const l = r.lines[0];
-      if (!l) continue;
-      const m = l.score.mate;
-      if (m > 0) { start(fen, m); return; }
-      // без форсированного мата в пределах видимости — берём только явно выигранные
-      if (m === undefined && l.score.cp >= (type === 'kpk' ? 600 : 400)) { start(fen, null); return; }
-    }
-    fb(root, t('err.engine', { msg: 'endgame' }), 'bad');
+  function load(idx) {
+    i = Math.max(0, Math.min(idx, list.length - 1));
+    start(list[i].f, list[i].n);
   }
 
   function start(fen, n) {
@@ -614,10 +627,10 @@ export async function renderEndgame(root, type) {
     board.setArrows([]);
     board.setOrientation('w');
     redraw(null, false);
-    setLevel(root, key, i, list.length);
+    root.querySelector('.lvl').innerHTML = stripHtml(key, L, i);
     fb(root, t('tr.yourMoveWhite'));
     root.querySelector('.par').innerHTML = `🎯 ${par ? t('tr.par', { n: par }) : type === 'kbn' ? t('tr.parKbn') : t('tr.parWin')}`;
-    root.querySelector('#nextE').disabled = i >= getProg(key);
+    root.querySelector('#nextE').disabled = false;
   }
 
 
@@ -625,9 +638,9 @@ export async function renderEndgame(root, type) {
     over = true;
     if (ok) {
       if (!hinted) result(key, true);
-      setProg(key, Math.max(getProg(key), i + 1));
-      root.querySelector('#nextE').disabled = false;
-      setLevel(root, key, i, list.length);
+      const before = solvedIn(key, L);
+      if (markSolved(key, L, i) >= PER && before < PER) text += `<br>${levelCompleteHtml(base, L)}`;
+      root.querySelector('.lvl').innerHTML = stripHtml(key, L, i);
     } else result(key, false);
     playSound(ok ? 'end' : 'wrong');
     fb(root, text, ok ? 'ok' : 'bad');
@@ -694,7 +707,8 @@ export async function renderEndgame(root, type) {
     fb(root, t('common.yourMove'));
   };
   root.querySelector('#resetE').onclick = () => { if (startFen) start(startFen, par); };
-  root.querySelector('#nextE').onclick = () => load(i + 1);
+  root.querySelector('#nextE').onclick = () => load(nextUnsolved(key, L, i));
+  root.querySelector('.lvl').onclick = (e) => { const b = e.target.closest('.ts'); if (b) load(Number(b.dataset.k)); };
   root._cleanup = () => { token++; engine.stop(); };
-  load(getProg(key));
+  load(firstUnsolved(key, L));
 }

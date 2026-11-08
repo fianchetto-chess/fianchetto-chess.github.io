@@ -304,3 +304,18 @@ textarea { width: 100%; background: var(--bg); color: var(--text); border: 1px s
 
 /* предход */
 .sq.premove.light { background: #e6a07a; } .sq.premove.dark { background: #c27552; }
+
+/* уровни тренировок */
+.levels{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;margin-top:18px}
+.lv-tile{display:flex;flex-direction:column;gap:8px;padding:16px;border-radius:12px;background:var(--panel,#262421);border:1px solid rgba(255,255,255,.08);text-decoration:none;color:inherit;transition:transform .12s,border-color .12s}
+a.lv-tile:hover{transform:translateY(-2px);border-color:#7fa650}
+.lv-tile .lv-num{font-size:1.8em;font-weight:800;line-height:1}
+.lv-tile .lv-sub{font-size:.9em;opacity:.8}
+.lv-tile.done{border-color:#5d8a3a;background:linear-gradient(180deg,rgba(127,166,80,.18),rgba(127,166,80,.05))}
+.lv-tile.locked{opacity:.45;cursor:not-allowed}
+.lv-tile.locked .lv-num{font-size:1.3em}
+.task-strip{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin:6px 0 10px}
+.task-strip .ts{padding:4px 0;font-size:12px;border-radius:5px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:inherit;cursor:pointer}
+.task-strip .ts.done{background:#5d8a3a;border-color:#6f9e48;color:#fff}
+.task-strip .ts.cur{outline:2px solid #e6c15a;outline-offset:1px}
+.task-strip .ts:disabled{cursor:default}

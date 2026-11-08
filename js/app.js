@@ -115,11 +115,11 @@ function route() {
       else renderLearn(app);
       break;
     case 'train':
-      if (parts[1] === 'end') renderEndgame(app, parts[2]);
-      else if (parts[1] === 'p') renderPuzzleTrack(app, parts[2]);
-      else if (parts[1] === 'mate1' || parts[1] === 'promo') renderPuzzleTrack(app, parts[1]);
-      else if (parts[1] === 'ep') renderEnPassant(app);
-      else if (parts[1] === 'castle') renderCastling(app);
+      if (parts[1] === 'end') renderEndgame(app, parts[2], parts[3]);
+      else if (parts[1] === 'p') renderPuzzleTrack(app, parts[2], parts[3]);
+      else if (parts[1] === 'mate1' || parts[1] === 'promo') renderPuzzleTrack(app, parts[1], parts[2]);
+      else if (parts[1] === 'ep') renderEnPassant(app, parts[2]);
+      else if (parts[1] === 'castle') renderCastling(app, parts[2]);
       else renderTraining(app);
       break;
     case 'bots': parts[1] ? renderBotGame(app, parts[1], parts[2]) : renderBots(app); break;
