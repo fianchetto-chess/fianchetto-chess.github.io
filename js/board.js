@@ -74,6 +74,35 @@ function diffPositions(oldP, newP) {
   return { moves, captures, changes: added.length + removed.length };
 }
 
+// Поля, куда фигура могла бы пойти, не учитывая другие фигуры (для предхода)
+function pseudoTargets(pieces, from) {
+  const p = pieces[from];
+  if (!p) return [];
+  const f = FILES.indexOf(from[0]), r = Number(from[1]) - 1;
+  const out = [];
+  const add = (ff, rr) => { if (ff >= 0 && ff < 8 && rr >= 0 && rr < 8) out.push(FILES[ff] + (rr + 1)); };
+  const ray = (df, dr) => { for (let k = 1; k < 8; k++) add(f + df * k, r + dr * k); };
+  const DIAG = [[1, 1], [1, -1], [-1, 1], [-1, -1]], LINE = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  switch (p.type) {
+    case 'p': {
+      const d = p.color === 'w' ? 1 : -1;
+      add(f, r + d);
+      if ((p.color === 'w' && r === 1) || (p.color === 'b' && r === 6)) add(f, r + 2 * d);
+      add(f - 1, r + d); add(f + 1, r + d);
+      break;
+    }
+    case 'n': for (const [a, b] of [[1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-2, -1]]) add(f + a, r + b); break;
+    case 'b': DIAG.forEach(([a, b]) => ray(a, b)); break;
+    case 'r': LINE.forEach(([a, b]) => ray(a, b)); break;
+    case 'q': [...DIAG, ...LINE].forEach(([a, b]) => ray(a, b)); break;
+    case 'k':
+      for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) if (a || b) add(f + a, r + b);
+      if (f === 4 && r === (p.color === 'w' ? 0 : 7)) { add(6, r); add(2, r); }
+      break;
+  }
+  return out.filter((sq) => !(pieces[sq] && pieces[sq].color === p.color));
+}
+
 export class Board {
   constructor(el, { orientation = 'w', onMove = null, coords = true } = {}) {
     this.el = el;
@@ -94,6 +123,8 @@ export class Board {
     this.drag = null;
     this.rdrag = null;
     this.hoverSq = null;
+    this.premoveColor = null; // чьи фигуры можно двигать заранее, пока ход соперника
+    this.premove = null;      // {from, to} — запланированный предход
 
     el.classList.add('board-wrap');
     el.innerHTML = `
@@ -149,7 +180,7 @@ export class Board {
   }
 
   // Удобный метод: взять всё из объекта chess.js
-  fromChess(chess, { movable = null, lastMove, animate = true } = {}) {
+  fromChess(chess, { movable = null, lastMove, animate = true, premove = null } = {}) {
     let check = null;
     if (chess.inCheck()) {
       const turn = chess.turn();
@@ -159,10 +190,22 @@ export class Board {
     const lm = lastMove !== undefined ? lastMove : (hist.length ? [hist[hist.length - 1].from, hist[hist.length - 1].to] : null);
     this.legal = movable ? legalMap(chess) : new Map();
     this.movable = movable;
+    this.premoveColor = movable ? null : premove;
+    if (this.premove && !movable && !premove) this.premove = null; // предход больше не нужен
     this.setPosition(chess.fen(), { lastMove: lm, check, animate });
+    if (this.premove && movable && movable !== 'both') {
+      const pm = this.premove;
+      this.premove = null;
+      if ((this.legal.get(pm.from) || []).some((m) => m.to === pm.to)) {
+        // ждём, пока доедет фигура соперника, и делаем запланированный ход
+        setTimeout(() => { if (this.movable === movable && this.pieces[pm.from]) this._try(pm.from, pm.to, true, true); }, ANIM_MS + 20);
+      } else this.render();
+    }
   }
 
-  setMovable(color, legal) { this.movable = color; this.legal = legal || new Map(); this.selected = null; this.render(); }
+  cancelPremove() { if (this.premove) { this.premove = null; this.render(); } }
+
+  setMovable(color, legal) { this.movable = color; this.legal = legal || new Map(); this.selected = null; this.premoveColor = null; this.premove = null; this.render(); }
   flip() { this.orientation = this.orientation === 'w' ? 'b' : 'w'; this.render(); }
   setOrientation(o) { if (o !== this.orientation) { this.orientation = o; this.render(); } }
   setArrows(a) { this.arrows = a || []; this._drawArrows(); }
@@ -188,8 +231,32 @@ export class Board {
     return this.movable === 'both' || this.movable === color;
   }
 
+  _isPre(sq) {
+    const p = this.pieces[sq];
+    return !!p && !this._canMove(p.color) && this.premoveColor === p.color;
+  }
+
+  _targets(from) {
+    return this._isPre(from) ? pseudoTargets(this.pieces, from).map((to) => ({ to })) : (this.legal.get(from) || []);
+  }
+
+  _selectable(sq) {
+    const p = this.pieces[sq];
+    return !!p && ((this._canMove(p.color) && this.legal.has(sq)) || this._isPre(sq));
+  }
+
+  _commit(from, to, animate) {
+    if (this._isPre(from)) {
+      this.premove = { from, to };
+      this.selected = null;
+      this.render();
+      return;
+    }
+    this._try(from, to, animate);
+  }
+
   render() {
-    const targets = this.selected ? (this.legal.get(this.selected) || []) : [];
+    const targets = this.selected ? this._targets(this.selected) : [];
     const html = [];
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
@@ -200,13 +267,14 @@ export class Board {
         const cls = ['sq', dark ? 'dark' : 'light'];
         if (this.lastMove && this.lastMove.includes(sq)) cls.push('last');
         if (this.selected === sq) cls.push('sel');
+        if (this.premove && (this.premove.from === sq || this.premove.to === sq)) cls.push('premove');
         if (this.checkSq === sq) cls.push('check');
         if (this.userMarks.includes(sq)) cls.push('marked');
         for (const h of this.hints) if (h.sq === sq) cls.push(h.cls);
         const target = targets.find((m) => m.to === sq);
         if (target) cls.push(this.pieces[sq] ? 'cap' : 'dot');
         const p = this.pieces[sq];
-        if (p && this._canMove(p.color) && this.legal.has(sq)) cls.push('can');
+        if (this._selectable(sq)) cls.push('can');
         let inner = '';
         if (p) inner += pieceHtml(p.color, p.type, `data-sq="${sq}"`);
         if (this.coords && col === 0) inner += `<span class="co rank">${r + 1}</span>`;
@@ -289,15 +357,14 @@ export class Board {
     const sq = this._sqAt(e.clientX, e.clientY);
     if (!sq) return;
     // правая кнопка — рисование стрелок и выделение клеток
-    if (e.button === 2) { this.rdrag = { from: sq }; e.preventDefault(); return; }
+    if (e.button === 2) { this.cancelPremove(); this.rdrag = { from: sq }; e.preventDefault(); return; }
     if (e.button !== 0 && e.pointerType === 'mouse') return;
     this.clearUserDrawings();
-    if (this.selected && (this.legal.get(this.selected) || []).some((m) => m.to === sq)) {
-      this._try(this.selected, sq, true);
+    if (this.selected && this._targets(this.selected).some((m) => m.to === sq)) {
+      this._commit(this.selected, sq, true);
       return;
     }
-    const p = this.pieces[sq];
-    if (p && this._canMove(p.color) && this.legal.has(sq)) {
+    if (this._selectable(sq)) {
       const wasSelected = this.selected === sq;
       this.selected = sq;
       this.render();
@@ -310,8 +377,9 @@ export class Board {
       this.drag = { from: sq, ghost, pieceEl, wasSelected, x0: e.clientX, y0: e.clientY, moved: false };
       this._placeGhost(e.clientX, e.clientY);
       e.preventDefault();
-    } else if (this.selected) {
+    } else if (this.selected || this.premove) {
       this.selected = null;
+      this.premove = null; // щелчок мимо отменяет предход
       this.render();
     }
   }
@@ -353,9 +421,10 @@ export class Board {
     this._setHover(null);
     this.el.classList.remove('is-dragging');
     const sq = this._sqAt(e.clientX, e.clientY);
-    if (sq && sq !== d.from && (this.legal.get(d.from) || []).some((m) => m.to === sq)) {
+    if (sq && sq !== d.from && this._targets(d.from).some((m) => m.to === sq)) {
       d.ghost.remove();
-      this._try(d.from, sq, false);
+      if (this._isPre(d.from)) d.pieceEl.classList.remove('dragging');
+      this._commit(d.from, sq, false);
       return;
     }
     if (sq === d.from && d.wasSelected && !d.moved) {
@@ -377,12 +446,12 @@ export class Board {
     setTimeout(() => { g.remove(); d.pieceEl.classList.remove('dragging'); }, 140);
   }
 
-  async _try(from, to, animate) {
+  async _try(from, to, animate, fromPremove = false) {
     const opts = (this.legal.get(from) || []).filter((m) => m.to === to);
     if (!opts.length) return;
     let promotion;
     if (opts[0].promotion) {
-      promotion = await this._askPromotion(this.pieces[from].color, to);
+      promotion = fromPremove ? 'q' : await this._askPromotion(this.pieces[from].color, to);
       if (!promotion) { this.selected = null; this.render(); return; }
     }
     this.selected = null;

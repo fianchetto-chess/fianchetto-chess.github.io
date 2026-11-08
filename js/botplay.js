@@ -71,7 +71,7 @@ export function renderBotGame(root, id, color) {
 
   function redraw() {
     const canMove = !over && !thinkingNow && chess.turn() === me;
-    board.fromChess(chess, { movable: canMove ? me : null });
+    board.fromChess(chess, { movable: canMove ? me : null, premove: over ? null : me });
     const sans = chess.history();
     const box = root.querySelector('#bmoves');
     box.innerHTML = moveListHtml(sans, sans.length - 1);
@@ -138,6 +138,7 @@ export function renderBotGame(root, id, color) {
   root.querySelector('#flip').onclick = () => board.flip();
   root.querySelector('#undo').onclick = () => {
     if (over) return;
+    board.cancelPremove();
     token++;
     thinkingNow = false;
     thinking.classList.add('hidden');

@@ -191,12 +191,12 @@ export default {
   'learn.oppDeviates': "Соперник выбрал {m} — {name}. Ответьте правильно!",
   'learn.varsN': (p) => `${p.n} ${pl(p.n, ['вариант', 'варианта', 'вариантов'])}`,
   // задача дня и рейтинг
-  'daily.title': "Задача дня",
-  'daily.cta': "Решить задачу дня",
-  'daily.doneToday': "Решено сегодня",
-  'daily.solved': (p) => `Решено! Серия: ${p.n} ${pl(p.n, ['день', 'дня', 'дней'])}.`,
-  'daily.streak': (p) => `Серия ${p.n} ${pl(p.n, ['день', 'дня', 'дней'])}`,
   'daily.rating': (p) => `Рейтинг: ${p.r}`,
   'daily.ratingTitle': "Рейтинг задач",
   'daily.ratingSub': (p) => `Рекорд: ${p.best} · решено ${p.n}`,
+  'daily.title': 'Задачи дня',
+  'daily.cta': 'Решать задачи дня',
+  'daily.doneToday': 'Все задачи дня решены',
+  'daily.progress': (p) => `Решено ${p.n} из ${p.total}`,
+  'daily.lead': (p) => `${p.total} новых задач каждый день, каждая сложнее предыдущей.`,
 };

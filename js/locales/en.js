@@ -202,12 +202,12 @@ export default {
   'learn.oppDeviates': "The opponent chose {m} — {name}. Answer correctly!",
   'learn.varsN': (p) => `${p.n} ${p.n === 1 ? 'line' : 'lines'}`,
   // daily puzzle & rating
-  'daily.title': "Puzzle of the day",
-  'daily.cta': "Solve today's puzzle",
-  'daily.doneToday': "Solved today",
-  'daily.solved': (p) => `Solved! Day streak: ${p.n}.`,
-  'daily.streak': (p) => `${p.n}-day streak`,
   'daily.rating': (p) => `Rating: ${p.r}`,
   'daily.ratingTitle': "Puzzle rating",
   'daily.ratingSub': (p) => `Best: ${p.best} · solved ${p.n}`,
+  'daily.title': 'Puzzles of the day',
+  'daily.cta': "Solve today's puzzles",
+  'daily.doneToday': "All today's puzzles solved",
+  'daily.progress': (p) => `Solved ${p.n} of ${p.total}`,
+  'daily.lead': (p) => `${p.total} new puzzles every day, each harder than the last.`,
 };

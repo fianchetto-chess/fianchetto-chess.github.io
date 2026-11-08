@@ -3,7 +3,7 @@ import { t, initI18n, setLang, getLang, LANGS, FULL_CONTENT_LANGS } from './i18n
 import { renderLearn, renderLesson, renderOpening } from './learn.js';
 import { renderBots, renderBotGame } from './botplay.js';
 import { renderAnalysis } from './analysis-view.js';
-import { renderTraining, renderPuzzleTrack, renderEnPassant, renderCastling, renderEndgame, loadData, dailyPuzzle, dailyStats, puzzleRating } from './training.js';
+import { renderTraining, renderPuzzleTrack, renderEnPassant, renderCastling, renderEndgame, loadData, dailyPuzzles, dailyProgress, DAILY_N } from './training.js';
 import { staticBoardHtml } from './board.js';
 import { METRIKA_ID } from './config.js';
 import { BOTS } from './bots.js';
@@ -44,16 +44,16 @@ function renderHome(root) {
   loadData().then((data) => {
     const box = root.querySelector('#homeDaily');
     if (!box) return;
-    const pz = dailyPuzzle(data);
+    const dp = dailyProgress();
+    const pz = dailyPuzzles(data)[Math.min(dp, DAILY_N - 1)];
     const color = pz.f.split(' ')[1];
-    const s = dailyStats();
     box.innerHTML = `
       <a class="hd-board" href="#/train/p/daily">${staticBoardHtml(pz.f, color)}</a>
       <div class="hd-text">
         <h2>📅 ${t('daily.title')}</h2>
         <p>${t(color === 'w' ? 'tr.whiteToMove' : 'tr.blackToMove')} ${pz.n ? t('tr.mateTask', { n: pz.n }) : t('tr.tacticTask')}</p>
-        <p class="hd-stats">🔥 ${t('daily.streak', { n: s.streak })} · 🏆 ${t('daily.rating', { r: puzzleRating().r })}</p>
-        <a class="btn primary big" href="#/train/p/daily">${s.solvedToday ? '✓ ' + t('daily.doneToday') : t('daily.cta')}</a>
+        <p class="hd-stats">${t('daily.lead', { total: DAILY_N })} ${t('daily.progress', { n: dp, total: DAILY_N })}</p>
+        <a class="btn primary big" href="#/train/p/daily">${dp >= DAILY_N ? '✓ ' + t('daily.doneToday') : t('daily.cta')}</a>
       </div>`;
   });
 }

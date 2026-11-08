@@ -301,3 +301,6 @@ textarea { width: 100%; background: var(--bg); color: var(--text); border: 1px s
 .rating-delta.up{color:#7fb36b}
 .rating-delta.down{color:#d98a8a}
 @media(max-width:560px){.train-top{grid-template-columns:1fr}}
+
+/* предход */
+.sq.premove.light { background: #e6a07a; } .sq.premove.dark { background: #c27552; }

@@ -66,32 +66,32 @@ function ratePuzzle(track, i, n, ok) {
   return diff;
 }
 
-// ---------- задача дня ----------
+// ---------- задачи дня: 15 штук, каждая сложнее предыдущей ----------
+export const DAILY_N = 15;
 const dayKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-export function dailyPuzzle(data) {
-  const pool = [...data.tactic.slice(40, 170), ...data.mate2.slice(15, 95)];
+export function dailyPuzzles(data) {
+  // все задачи (кроме превращения) по примерной сложности, от лёгких к трудным
+  const items = [];
+  for (const tr of ['mate1', 'tactic', 'mate2', 'mate3']) {
+    const list = data[tr];
+    list.forEach((pz, i) => items.push({ pz, elo: puzzleElo(tr, i, list.length) }));
+  }
+  items.sort((a, b) => a.elo - b.elo);
   const d = new Date();
   const dayNum = Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000);
-  return pool[(dayNum * 7919) % pool.length];
+  const band = items.length / DAILY_N;
+  const out = [];
+  for (let k = 0; k < DAILY_N; k++) {
+    const lo = Math.floor(k * band), size = Math.max(1, Math.floor(band));
+    out.push(items[lo + ((dayNum * 7919 + k * 104729) % size)].pz);
+  }
+  return out;
 }
-export function dailyStats() {
-  const s = store.get('daily', { last: null, streak: 0, best: 0, total: 0 });
-  // серия сгорает, если пропущен день
-  const y = new Date(); y.setDate(y.getDate() - 1);
-  if (s.last && s.last !== dayKey() && s.last !== dayKey(y)) s.streak = 0;
-  return { ...s, solvedToday: s.last === dayKey() };
+// прогресс задач дня обнуляется каждый новый день
+export function dailyProgress() {
+  if (store.get('dailyDay', null) !== dayKey()) { store.set('dailyDay', dayKey()); setProg('daily', 0); }
+  return getProg('daily');
 }
-function dailySolved() {
-  const s = dailyStats();
-  if (s.solvedToday) return s;
-  s.streak = (s.streak || 0) + 1;
-  s.best = Math.max(s.best || 0, s.streak);
-  s.total = (s.total || 0) + 1;
-  s.last = dayKey();
-  store.set('daily', { last: s.last, streak: s.streak, best: s.best, total: s.total });
-  return s;
-} // уровни у викторин «на проходе» и «рокировка»
-
 const THEORY = {
   kq: { en: 'Put the queen a <b>knight\'s move</b> away from the enemy king and shrink its "box". Once the king is pushed to the edge, bring your own king and mate. <b>Beware of stalemate:</b> always leave the enemy king at least one square until your king arrives.',
     ru: 'Ферзь становится <b>ходом коня</b> от чёрного короля и сжимает «коробку», в которой тот заперт. Когда король прижат к краю, подведите свой король и поставьте мат. <b>Осторожно с патом:</b> всегда оставляйте королю соперника хотя бы одно поле, пока ваш король не подошёл.' },
@@ -130,14 +130,14 @@ export async function renderTraining(root) {
       ${total ? progressHtml(i, total) : ''}${i >= total && total ? `<div class="card-stat">✓ ${t('tr.trackDone')}</div>` : ''}</a>`;
   };
   const pr = puzzleRating();
-  const ds = dailyStats();
+  const dp = dailyProgress();
   root.innerHTML = `
     <h1>${t('nav.train')}</h1>
     <p class="lead">${t('tr.lead')}</p>
     <div class="train-top">
       <a class="card daily-card" href="#/train/p/daily"><div class="card-title">📅 ${t('daily.title')}</div>
-        <div class="card-sub">${ds.solvedToday ? `✓ ${t('daily.doneToday')}` : t('daily.cta')}</div>
-        <div class="card-stat">🔥 ${t('daily.streak', { n: ds.streak })}</div></a>
+        <div class="card-sub">${dp >= DAILY_N ? `✓ ${t('daily.doneToday')}` : t('daily.cta')}</div>
+        <div class="card-stat">${t('daily.progress', { n: dp, total: DAILY_N })}</div></a>
       <div class="card"><div class="card-title">🏆 ${t('daily.ratingTitle')}</div>
         <div class="big-rating">${pr.r}</div>
         <div class="card-sub">${t('daily.ratingSub', { best: pr.best, n: pr.n })}</div></div>
@@ -188,10 +188,12 @@ function setLevel(root, key, i, n) {
 export async function renderPuzzleTrack(root, track) {
   const isDaily = track === 'daily';
   const tr = isDaily ? { id: 'daily', icon: '📅', title: 'daily.title' } : PUZZLE_TRACKS.find((x) => x.id === track);
+  if (isDaily) dailyProgress();
   if (!tr) { location.hash = '#/train'; return; }
   const board = shell(root, `${tr.icon} ${t(tr.title)}`);
   const data = await loadData();
-  const list = isDaily ? [dailyPuzzle(data)] : data[track];
+  const list = isDaily ? dailyPuzzles(data) : data[track];
+  const tacticLike = (pz) => track === 'tactic' || (isDaily && !pz.n);
   const engine = getEngine();
   root.querySelector('.controls').innerHTML = `
     <button class="btn" id="hint">💡 ${t('common.hint')}</button>
@@ -212,18 +214,12 @@ export async function renderPuzzleTrack(root, track) {
     board.setArrows([]);
     board.setOrientation(color);
     board.fromChess(chess, { movable: color, lastMove: null, animate: false });
-    if (isDaily) showDailyInfo(); else setLevel(root, track, i, list.length);
+    setLevel(root, track, i, list.length);
     const side = t(color === 'w' ? 'tr.whiteToMove' : 'tr.blackToMove');
     const task = pz.n ? t('tr.mateTask', { n: pz.n }) : track === 'promo' ? t('tr.promoTask2') : t('tr.tacticTask');
     root.querySelector('.task').innerHTML = `${side} <b>${task}</b>`;
     fb(root, '');
     btn('next').disabled = true;
-  }
-
-  function showDailyInfo() {
-    const s = dailyStats();
-    root.querySelector('.lvl').innerHTML = `<div class="daily-info">📅 ${dayKey()} · 🔥 ${t('daily.streak', { n: s.streak })} · ${t('daily.rating', { r: puzzleRating().r })}</div>`;
-    btn('next').style.display = 'none';
   }
 
   function ratingNote(diff) {
@@ -234,14 +230,8 @@ export async function renderPuzzleTrack(root, track) {
     solved = true;
     board.setMovable(null);
     let diff = null;
-    if (!failed) { result(track, true); diff = ratePuzzle(track, i, list.length, true); }
+    if (!failed) { result(track, true); if (!isDaily) diff = ratePuzzle(track, i, list.length, true); }
     playSound('end');
-    if (isDaily) {
-      const s = dailySolved();
-      fb(root, `✅ ${t('daily.solved', { n: s.streak })}${ratingNote(diff)}`, 'ok');
-      showDailyInfo();
-      return;
-    }
     if (!failed || i + 1 > getProg(track)) setProg(track, Math.max(getProg(track), i + 1));
     fb(root, `✅ ${failed ? t('tr.solvedAfterTry') : t('tr.solvedOk')}${ratingNote(diff)}${i + 1 >= list.length ? ` ${t('tr.trackDone')}` : ''}`, 'ok');
     btn('next').disabled = i + 1 >= list.length;
@@ -249,7 +239,7 @@ export async function renderPuzzleTrack(root, track) {
   }
 
   function lose(msg) {
-    if (!failed) { result(track, false); msg += ratingNote(ratePuzzle(track, i, list.length, false)); }
+    if (!failed) { result(track, false); if (!isDaily) msg += ratingNote(ratePuzzle(track, i, list.length, false)); }
     failed = true;
     playSound('wrong');
     fb(root, `❌ ${msg}`, 'bad');
@@ -269,10 +259,10 @@ export async function renderPuzzleTrack(root, track) {
     moveSound(mv);
     board.setArrows([]);
     busy = true;
-    board.fromChess(chess, { movable: null, lastMove: [from, to], animate: false });
+    board.fromChess(chess, { movable: null, lastMove: [from, to], animate: false, premove: color });
     let ok = false;
     if (chess.isCheckmate()) { ok = true; }
-    else if (track === 'tactic') {
+    else if (tacticLike(pz)) {
       if (mv.lan === pz.s) ok = true;
       else {
         // другой ход тоже засчитывается, если он выигрывает не хуже
@@ -321,6 +311,7 @@ export async function renderPuzzleTrack(root, track) {
     lose(chess.isStalemate() ? t('tr.stalemate') : t('tr.notBest'));
     await sleep(900);
     if (my !== token || !alive(board)) return;
+    board.cancelPremove();
     chess.load(before);
     busy = false;
     board.fromChess(chess, { movable: color, lastMove: null });
@@ -329,7 +320,7 @@ export async function renderPuzzleTrack(root, track) {
   btn('hint').onclick = () => {
     if (solved || busy) return;
     hintStep++;
-    if (!failed) { result(track, false); ratePuzzle(track, i, list.length, false); failed = true; }
+    if (!failed) { result(track, false); if (!isDaily) ratePuzzle(track, i, list.length, false); failed = true; }
     const go = async () => {
       let u = pz.s;
       if (chess.fen() !== pz.f) { const r = await engine.analyse(chess.fen(), { depth: 14 }); u = r.bestmove; }
@@ -340,14 +331,14 @@ export async function renderPuzzleTrack(root, track) {
   };
   btn('show').onclick = async () => {
     if (solved || busy) return;
-    if (!failed) { result(track, false); ratePuzzle(track, i, list.length, false); failed = true; }
+    if (!failed) { result(track, false); if (!isDaily) ratePuzzle(track, i, list.length, false); failed = true; }
     busy = true;
     const my = token;
     // проигрываем решение на доске
     let line = pz.p && pz.p.length ? pz.p : [pz.s];
     chess.load(pz.f);
     board.fromChess(chess, { movable: null, lastMove: null, animate: false });
-    if (track !== 'tactic' && pz.n) line = line.slice(0, pz.n * 2 - 1);
+    if (pz.n) line = line.slice(0, pz.n * 2 - 1);
     for (const u of line.slice(0, 7)) {
       await sleep(600);
       if (my !== token || !alive(board)) return;
@@ -358,7 +349,6 @@ export async function renderPuzzleTrack(root, track) {
     }
     busy = false;
     fb(root, t('tr.solutionShown'));
-    if (isDaily) return;
     setProg(track, Math.max(getProg(track), i + 1));
     btn('next').disabled = i + 1 >= list.length;
   };
