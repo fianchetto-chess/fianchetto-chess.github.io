@@ -66,15 +66,16 @@ function ratePuzzle(track, i, n, ok) {
   return diff;
 }
 
-// ---------- задачи дня: 15 штук, каждая сложнее предыдущей ----------
-export const DAILY_N = 15;
+// ---------- задачи дня: 30 сложных задач, каждая сложнее предыдущей ----------
+export const DAILY_N = 30;
 const dayKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 export function dailyPuzzles(data) {
-  // все задачи (кроме превращения) по примерной сложности, от лёгких к трудным
+  // только самая трудная часть тренировок: тактика, мат в 2 и мат в 3+
   const items = [];
-  for (const tr of ['mate1', 'tactic', 'mate2', 'mate3']) {
+  for (const tr of ['tactic', 'mate2', 'mate3']) {
     const list = data[tr];
-    list.forEach((pz, i) => items.push({ pz, elo: puzzleElo(tr, i, list.length) }));
+    const from = Math.floor(list.length * 0.6);
+    for (let i = from; i < list.length; i++) items.push({ pz: list[i], elo: puzzleElo(tr, i, list.length) });
   }
   items.sort((a, b) => a.elo - b.elo);
   const d = new Date();
@@ -116,6 +117,7 @@ const PUZZLE_TRACKS = [
 ];
 
 function progressHtml(i, n, done = i) {
+  if (n && i >= n) return `<div class="lvl-bar"><div style="width:100%"></div></div><div class="lvl-text">${t('tr.levelFree', { i: i + 1 })}</div>`;
   const pct = n ? Math.round((Math.min(done, n) / n) * 100) : 0;
   return `<div class="lvl-bar"><div style="width:${pct}%"></div></div><div class="lvl-text">${t('tr.levelOf', { i: Math.min(i + 1, n), n })}</div>`;
 }
@@ -143,7 +145,7 @@ export async function renderTraining(root) {
         <div class="card-sub">${t('daily.ratingSub', { best: pr.best, n: pr.n })}</div></div>
     </div>
     <h2>⚔ ${t('tr.tactics')}</h2>
-    <div class="cards">${PUZZLE_TRACKS.map((tr) => card(`#/train/p/${tr.id}`, `${tr.icon} ${t(tr.title)}`, t(tr.sub), tr.id, data[tr.id].length)).join('')}</div>
+    <div class="cards">${PUZZLE_TRACKS.map((tr) => `<a class="card train-card" href="#/train/p/${tr.id}"><div class="card-title">${tr.icon} ${t(tr.title)}</div><div class="card-sub">${t(tr.sub)}</div>${endlessHtml(trackState(tr.id, data[tr.id].length))}</a>`).join('')}</div>
     <h2>♔ ${t('tr.mates')}</h2>
     <p class="muted">${t('tr.matesNote')}</p>
     <div class="cards">${Object.entries(ENDGAMES).map(([k, e]) => card(`#/train/end/${k}`, `${e.icon} ${t('end.title.' + k)}`, t('end.sub.' + k), 'end-' + k, (data.end[k] || []).length)).join('')}</div>
@@ -185,15 +187,42 @@ function setLevel(root, key, i, n) {
 }
 
 // ---------- Задачи: мат в 1/2/3, найди выигрывающий ход, превращение ----------
+// ---------- бесконечные треки: сложность растёт с каждой решённой задачей ----------
+const STEP_UP = 1 / 30, STEP_DOWN = 1 / 60;
+function trackState(track, len) {
+  const s = store.get('trk-' + track, null);
+  if (s && Array.isArray(s.seen)) return s;
+  // переносим прежний прогресс по уровням
+  return { pos: len ? Math.min(1, getProg(track) / len) : 0, n: 0, seen: [] };
+}
+const saveTrack = (track, s) => store.set('trk-' + track, { pos: s.pos, n: s.n, seen: s.seen.slice(-400) });
+const diffLevel = (pos) => Math.min(10, 1 + Math.floor(pos * 10));
+function pickIndex(len, s) {
+  const center = Math.round(s.pos * (len - 1));
+  const seen = new Set(s.seen);
+  for (let half = Math.max(8, Math.round(len * 0.04)); half < len * 2; half *= 2) {
+    const c = [];
+    for (let j = Math.max(0, center - half); j <= Math.min(len - 1, center + half); j++) if (!seen.has(j)) c.push(j);
+    if (c.length) return c[Math.floor(Math.random() * c.length)];
+  }
+  s.seen = [];
+  return Math.floor(Math.random() * len);
+}
+function endlessHtml(st) {
+  const d = diffLevel(st.pos);
+  return `<div class="lvl-bar"><div style="width:${d * 10}%"></div></div><div class="lvl-text">${t('tr.endlessInfo', { n: st.n, d })}</div>`;
+}
+
 export async function renderPuzzleTrack(root, track) {
   const isDaily = track === 'daily';
   const tr = isDaily ? { id: 'daily', icon: '📅', title: 'daily.title' } : PUZZLE_TRACKS.find((x) => x.id === track);
-  if (isDaily) dailyProgress();
   if (!tr) { location.hash = '#/train'; return; }
+  if (isDaily) dailyProgress();
   const board = shell(root, `${tr.icon} ${t(tr.title)}`);
   const data = await loadData();
+  if (!alive(board)) return;
   const list = isDaily ? dailyPuzzles(data) : data[track];
-  const tacticLike = (pz) => track === 'tactic' || (isDaily && !pz.n);
+  const tacticLike = (z) => track === 'tactic' || (isDaily && !z.n);
   const engine = getEngine();
   root.querySelector('.controls').innerHTML = `
     <button class="btn" id="hint">💡 ${t('common.hint')}</button>
@@ -201,25 +230,68 @@ export async function renderPuzzleTrack(root, track) {
     <button class="btn" id="retry">↻ ${t('tr.retry')}</button>
     <button class="btn primary" id="next">${t('common.next')} →</button>`;
   const btn = (id) => root.querySelector('#' + id);
-  let i = Math.min(getProg(track), list.length - 1);
-  let pz, chess, color, need, failed, solved, busy, hintStep, token = 0;
+  const st = isDaily ? null : trackState(track, list.length);
+  let i = 0, pz, chess, color, need, failed, solved, busy, hintStep, token = 0;
 
-  function load(idx) {
-    i = Math.max(0, Math.min(idx, list.length - 1));
-    pz = list[i];
+  function showInfo() {
+    if (isDaily) { setLevel(root, track, i, list.length); return; }
+    root.querySelector('.lvl').innerHTML = endlessHtml(st);
+    const s = stats(track);
+    root.querySelector('.train-stats').innerHTML = t('tr.statsLine', { solved: s.solved, streak: s.streak, best: s.best });
+  }
+
+  function setup(z) {
+    pz = z;
     chess = new Chess(pz.f);
     color = chess.turn();
     need = pz.n || 1;       // сколько ходов осталось до мата
     failed = false; solved = false; busy = false; hintStep = 0; token++;
     board.setArrows([]);
+    board.setHints([]);
     board.setOrientation(color);
     board.fromChess(chess, { movable: color, lastMove: null, animate: false });
-    setLevel(root, track, i, list.length);
+    showInfo();
     const side = t(color === 'w' ? 'tr.whiteToMove' : 'tr.blackToMove');
     const task = pz.n ? t('tr.mateTask', { n: pz.n }) : track === 'promo' ? t('tr.promoTask2') : t('tr.tacticTask');
     root.querySelector('.task').innerHTML = `${side} <b>${task}</b>`;
     fb(root, '');
     btn('next').disabled = true;
+  }
+
+  function load(idx) { // задачи дня — по порядку
+    i = Math.max(0, Math.min(idx, list.length - 1));
+    setup(list[i]);
+  }
+
+  async function loadNext() { // бесконечный трек — случайная задача нужной сложности
+    if (track === 'promo' && Math.random() < 0.4) {
+      try {
+        const g = await gen('genPromotionMate');
+        if (!alive(board)) return;
+        i = -1;
+        setup({ f: g.fen, s: g.mates[0] });
+        return;
+      } catch { /* берём из базы */ }
+    }
+    i = pickIndex(list.length, st);
+    st.seen.push(i);
+    saveTrack(track, st);
+    setup(list[i]);
+  }
+
+  // рейтинг меняется только в обычных треках и только для задач из базы
+  const rate = (ok) => (isDaily || i < 0 ? null : ratePuzzle(track, i, list.length, ok));
+  function adjust(ok) {
+    if (isDaily) return;
+    st.pos = Math.max(0, Math.min(1, st.pos + (ok ? STEP_UP : -STEP_DOWN)));
+    saveTrack(track, st);
+  }
+  function markFail() {
+    if (failed) return null;
+    failed = true;
+    result(track, false);
+    adjust(false);
+    return rate(false);
   }
 
   function ratingNote(diff) {
@@ -230,17 +302,25 @@ export async function renderPuzzleTrack(root, track) {
     solved = true;
     board.setMovable(null);
     let diff = null;
-    if (!failed) { result(track, true); if (!isDaily) diff = ratePuzzle(track, i, list.length, true); }
+    if (!failed) { result(track, true); diff = rate(true); adjust(true); }
     playSound('end');
-    if (!failed || i + 1 > getProg(track)) setProg(track, Math.max(getProg(track), i + 1));
-    fb(root, `✅ ${failed ? t('tr.solvedAfterTry') : t('tr.solvedOk')}${ratingNote(diff)}${i + 1 >= list.length ? ` ${t('tr.trackDone')}` : ''}`, 'ok');
-    btn('next').disabled = i + 1 >= list.length;
-    setLevel(root, track, i, list.length);
+    if (isDaily) {
+      setProg(track, Math.max(getProg(track), i + 1));
+      fb(root, `✅ ${failed ? t('tr.solvedAfterTry') : t('tr.solvedOk')}${i + 1 >= list.length ? ` ${t('daily.doneToday')}` : ''}`, 'ok');
+      btn('next').disabled = i + 1 >= list.length;
+      showInfo();
+      return;
+    }
+    st.n++;
+    saveTrack(track, st);
+    fb(root, `✅ ${failed ? t('tr.solvedAfterTry') : t('tr.solvedHarder')}${ratingNote(diff)}`, 'ok');
+    btn('next').disabled = false;
+    showInfo();
   }
 
   function lose(msg) {
-    if (!failed) { result(track, false); if (!isDaily) msg += ratingNote(ratePuzzle(track, i, list.length, false)); }
-    failed = true;
+    const d = markFail();
+    if (d !== null) msg += ratingNote(d);
     playSound('wrong');
     fb(root, `❌ ${msg}`, 'bad');
   }
@@ -320,7 +400,7 @@ export async function renderPuzzleTrack(root, track) {
   btn('hint').onclick = () => {
     if (solved || busy) return;
     hintStep++;
-    if (!failed) { result(track, false); if (!isDaily) ratePuzzle(track, i, list.length, false); failed = true; }
+    markFail();
     const go = async () => {
       let u = pz.s;
       if (chess.fen() !== pz.f) { const r = await engine.analyse(chess.fen(), { depth: 14 }); u = r.bestmove; }
@@ -331,7 +411,7 @@ export async function renderPuzzleTrack(root, track) {
   };
   btn('show').onclick = async () => {
     if (solved || busy) return;
-    if (!failed) { result(track, false); if (!isDaily) ratePuzzle(track, i, list.length, false); failed = true; }
+    markFail();
     busy = true;
     const my = token;
     // проигрываем решение на доске
@@ -348,20 +428,21 @@ export async function renderPuzzleTrack(root, track) {
       board.fromChess(chess, { movable: null });
     }
     busy = false;
-    fb(root, t('tr.solutionShown'));
-    setProg(track, Math.max(getProg(track), i + 1));
-    btn('next').disabled = i + 1 >= list.length;
+    solved = true;
+    fb(root, t(isDaily ? 'tr.solutionShown' : 'tr.solutionShownNext'));
+    if (isDaily) setProg(track, Math.max(getProg(track), i + 1));
+    btn('next').disabled = isDaily && i + 1 >= list.length;
   };
-  btn('retry').onclick = () => load(i);
-  btn('next').onclick = () => load(i + 1);
+  btn('retry').onclick = () => setup(pz);
+  btn('next').onclick = () => (isDaily ? load(i + 1) : loadNext());
   root.querySelector('.lvl').onclick = (e) => {
-    if (!e.target.closest('.lvl-bar')) return;
+    if (!isDaily || !e.target.closest('.lvl-bar')) return;
     const r = e.target.closest('.lvl-bar').getBoundingClientRect();
     const target = Math.floor(((e.clientX - r.left) / r.width) * list.length);
-    if (target <= getProg(track)) load(target); // можно вернуться к пройденным уровням
+    if (target <= getProg(track)) load(target); // можно вернуться к пройденным задачам
   };
   root._cleanup = () => { token++; engine.stop(); };
-  load(i);
+  if (isDaily) load(Math.min(getProg(track), list.length - 1)); else loadNext();
 }
 
 // ---------- Взятие на проходе: «можно или нельзя?» (уровни) ----------
@@ -500,11 +581,34 @@ export async function renderEndgame(root, type) {
     box.scrollTop = box.scrollHeight;
   }
 
-  function load(idx) {
+  // после готовых уровней — бесконечные случайные позиции, проверенные движком
+  async function load(idx) {
     token++;
-    i = Math.max(0, Math.min(idx, list.length - 1));
-    startFen = list[i].f;
-    par = list[i].n;
+    const my = token;
+    i = Math.max(0, idx);
+    if (i < list.length) { start(list[i].f, list[i].n); return; }
+    over = true; busy = true;
+    board.setMovable(null);
+    fb(root, t('tr.generating'));
+    for (let a = 0; a < 8; a++) {
+      let fen;
+      try { fen = await gen('genEndgame', type); } catch { continue; }
+      const r = await engine.analyse(fen, { depth: 16 });
+      if (my !== token || !alive(board)) return;
+      const l = r.lines[0];
+      if (!l) continue;
+      const m = l.score.mate;
+      if (m > 0) { start(fen, m); return; }
+      // без форсированного мата в пределах видимости — берём только явно выигранные
+      if (m === undefined && l.score.cp >= (type === 'kpk' ? 600 : 400)) { start(fen, null); return; }
+    }
+    fb(root, t('err.engine', { msg: 'endgame' }), 'bad');
+  }
+
+  function start(fen, n) {
+    token++;
+    startFen = fen;
+    par = n;
     chess = new Chess(startFen);
     over = false; busy = false; hinted = false;
     board.setArrows([]);
@@ -516,12 +620,13 @@ export async function renderEndgame(root, type) {
     root.querySelector('#nextE').disabled = i >= getProg(key);
   }
 
+
   function finish(ok, text) {
     over = true;
     if (ok) {
       if (!hinted) result(key, true);
       setProg(key, Math.max(getProg(key), i + 1));
-      root.querySelector('#nextE').disabled = i + 1 >= list.length;
+      root.querySelector('#nextE').disabled = false;
       setLevel(root, key, i, list.length);
     } else result(key, false);
     playSound(ok ? 'end' : 'wrong');
@@ -588,8 +693,8 @@ export async function renderEndgame(root, type) {
     redraw();
     fb(root, t('common.yourMove'));
   };
-  root.querySelector('#resetE').onclick = () => load(i);
+  root.querySelector('#resetE').onclick = () => { if (startFen) start(startFen, par); };
   root.querySelector('#nextE').onclick = () => load(i + 1);
   root._cleanup = () => { token++; engine.stop(); };
-  load(Math.min(getProg(key), list.length - 1));
+  load(getProg(key));
 }

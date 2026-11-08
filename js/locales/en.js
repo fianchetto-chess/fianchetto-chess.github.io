@@ -112,7 +112,6 @@ export default {
   'profile.tc': 'Time control', 'profile.noGames': 'No games yet.',
 
   // training
-  'tr.lead': "Every exercise has levels — each next task is harder than the previous one. Your progress is saved.",
   'tr.mates': 'Checkmate technique vs. the engine', 'tr.matesNote': 'The engine defends at full strength and hides its king. Deliver mate without stalemating or losing a piece.',
   'end.title.kq': 'Queen mate', 'end.title.kr': 'Rook mate', 'end.title.krr': 'Two rooks', 'end.title.kbb': 'Two bishops', 'end.title.kbn': 'Bishop and knight', 'end.title.kpk': 'Pawn to queen',
   'end.sub.kq': 'King + queen vs. king', 'end.sub.kr': 'King + rook vs. king', 'end.sub.krr': 'King + two rooks vs. king', 'end.sub.kbb': 'King + two bishops vs. king', 'end.sub.kbn': 'King + bishop + knight vs. king', 'end.sub.kpk': 'King and pawn vs. king',
@@ -122,7 +121,7 @@ export default {
   'tr.tactics': 'Tactics', 'tr.mate1': 'Mate in 1', 'tr.mate1Sub': "From simple back-rank mates to hidden quiet moves",
   'tr.all': 'All exercises', 'tr.solved': 'Solved: {n}', 'tr.bestStreak': 'best streak: {n}',
   'tr.statsLine': 'Solved: <b>{solved}</b> · streak: <b>{streak}</b> · record: <b>{best}</b>',
-  'tr.showSolution': 'Show solution', 'tr.generating': 'Generating a position…',
+  'tr.showSolution': 'Show solution',
   'tr.promoTask': 'White to move. <b>Mate by promoting the pawn.</b> Think about which piece you need — a queen is not always right!',
   'tr.mate1Task': 'White to move. <b>Mate in 1.</b>', 'tr.mateOk': 'Checkmate! {m}', 'tr.underpromo': '— a knight promotion, underpromotion in action!',
   'tr.stalemate': "That's stalemate — a draw!", 'tr.checkNotMate': 'Check, but not mate: the king can escape or block.', 'tr.notMate': "That's not mate.",
@@ -209,5 +208,11 @@ export default {
   'daily.cta': "Solve today's puzzles",
   'daily.doneToday': "All today's puzzles solved",
   'daily.progress': (p) => `Solved ${p.n} of ${p.total}`,
-  'daily.lead': (p) => `${p.total} new puzzles every day, each harder than the last.`,
+  'tr.lead': "Puzzles never run out: each new one is picked at random, and the difficulty grows as you solve. Progress is saved.",
+  'tr.endlessInfo': (p) => `Solved: ${p.n} · difficulty ${p.d}/10`,
+  'tr.solvedHarder': "Solved! The next puzzle will be a little harder.",
+  'tr.solutionShownNext': "Here is the solution. Press “Next” for a new puzzle.",
+  'tr.levelFree': (p) => `Level ${p.i} · random positions`,
+  'tr.generating': "Preparing a new position…",
+  'daily.lead': (p) => `${p.total} hard puzzles every day, each harder than the last.`,
 };

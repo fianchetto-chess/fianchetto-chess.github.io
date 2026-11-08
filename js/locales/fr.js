@@ -181,5 +181,11 @@ export default {
   'daily.cta': 'Résoudre les problèmes du jour',
   'daily.doneToday': 'Tous les problèmes du jour sont résolus',
   'daily.progress': (p) => `${p.n} sur ${p.total} résolus`,
-  'daily.lead': (p) => `${p.total} nouveaux problèmes chaque jour, chacun plus difficile.`,
+  'tr.lead': "Les problèmes ne s'épuisent jamais : chacun est choisi au hasard et la difficulté augmente au fil des réussites. La progression est enregistrée.",
+  'tr.endlessInfo': (p) => `Résolus : ${p.n} · difficulté ${p.d}/10`,
+  'tr.solvedHarder': "Résolu ! Le prochain sera un peu plus difficile.",
+  'tr.solutionShownNext': "Voici la solution. Appuyez sur « Suivant » pour un nouveau problème.",
+  'tr.levelFree': (p) => `Niveau ${p.i} · positions aléatoires`,
+  'tr.generating': "Préparation d'une nouvelle position…",
+  'daily.lead': (p) => `${p.total} problèmes difficiles chaque jour, chacun plus dur que le précédent.`,
 };
