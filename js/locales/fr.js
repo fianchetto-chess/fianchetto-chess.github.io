@@ -174,4 +174,12 @@ export default {
   "learn.nextVar": "Ligne suivante",
   "learn.oppDeviates": "L'adversaire a choisi {m} — {name}. Répondez correctement !",
   "learn.varsN": (p) => `${p.n} ${p.n === 1 ? 'ligne' : 'lignes'}`,
+  'daily.title': "Problème du jour",
+  'daily.cta': "Résoudre le problème du jour",
+  'daily.doneToday': "Résolu aujourd'hui",
+  'daily.solved': (p) => `Résolu ! Série : ${p.n} jours.`,
+  'daily.streak': (p) => `Série de ${p.n} jours`,
+  'daily.rating': (p) => `Classement : ${p.r}`,
+  'daily.ratingTitle': "Classement des problèmes",
+  'daily.ratingSub': (p) => `Record : ${p.best} · résolus ${p.n}`,
 };

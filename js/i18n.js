@@ -14,6 +14,9 @@ let dict = en;
 function saved() { try { return JSON.parse(localStorage.getItem('lang')); } catch { return null; } }
 
 export async function initI18n() {
+  // язык из адреса (?lang=ru) — для ссылок со страниц для поисковиков
+  const q = new URLSearchParams(location.search).get('lang');
+  if (q && LANGS.some(([c]) => c === q)) { try { localStorage.setItem('lang', JSON.stringify(q)); } catch { /* */ } }
   const l = saved();
   lang = LANGS.some(([c]) => c === l) ? l : 'en';
   if (lang !== 'en') {

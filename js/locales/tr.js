@@ -174,4 +174,12 @@ export default {
   'learn.nextVar': "Sonraki varyant",
   'learn.oppDeviates': "Rakip {m} seçti — {name}. Doğru cevap verin!",
   'learn.varsN': (p) => `${p.n} varyant`,
+  'daily.title': "Günün bulmacası",
+  'daily.cta': "Bugünün bulmacasını çöz",
+  'daily.doneToday': "Bugün çözüldü",
+  'daily.solved': (p) => `Çözüldü! Seri: ${p.n} gün.`,
+  'daily.streak': (p) => `${p.n} günlük seri`,
+  'daily.rating': (p) => `Puan: ${p.r}`,
+  'daily.ratingTitle': "Bulmaca puanı",
+  'daily.ratingSub': (p) => `Rekor: ${p.best} · çözülen ${p.n}`,
 };

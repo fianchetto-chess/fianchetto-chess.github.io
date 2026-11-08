@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://helloartyr59-max.github.io/fianchetto/sitemap.xml

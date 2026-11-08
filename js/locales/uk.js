@@ -177,4 +177,12 @@ export default {
   'learn.nextVar': "Наступний варіант",
   'learn.oppDeviates': "Суперник обрав {m} — {name}. Відповідайте правильно!",
   'learn.varsN': (p) => `${p.n} ${pl(p.n, ['варіант', 'варіанти', 'варіантів'])}`,
+  'daily.title': "Задача дня",
+  'daily.cta': "Розв'язати задачу дня",
+  'daily.doneToday': "Розв'язано сьогодні",
+  'daily.solved': (p) => `Розв'язано! Серія: ${p.n} ${pl(p.n, ['день', 'дні', 'днів'])}.`,
+  'daily.streak': (p) => `Серія ${p.n} ${pl(p.n, ['день', 'дні', 'днів'])}`,
+  'daily.rating': (p) => `Рейтинг: ${p.r}`,
+  'daily.ratingTitle': "Рейтинг задач",
+  'daily.ratingSub': (p) => `Рекорд: ${p.best} · розв'язано ${p.n}`,
 };

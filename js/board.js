@@ -9,6 +9,20 @@ export const pieceHtml = (color, type, attrs = '') => `<div class="pc ${color}" 
 const FILES = 'abcdefgh';
 const ANIM_MS = 210;
 
+// Неподвижная мини-доска (для главной страницы)
+export function staticBoardHtml(fen, orientation = 'w') {
+  const pieces = parseFen(fen);
+  let html = '<div class="mini-board">';
+  for (let row = 0; row < 8; row++) for (let col = 0; col < 8; col++) {
+    const f = orientation === 'w' ? col : 7 - col;
+    const r = orientation === 'w' ? 7 - row : row;
+    const sq = FILES[f] + (r + 1);
+    const p = pieces[sq];
+    html += `<div class="${(f + r) % 2 ? 'light' : 'dark'}">${p ? `<img src="pieces/${p.color}${p.type.toUpperCase()}.svg" alt="">` : ''}</div>`;
+  }
+  return html + '</div>';
+}
+
 export function legalMap(chess) {
   const map = new Map();
   for (const m of chess.moves({ verbose: true })) {

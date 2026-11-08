@@ -174,4 +174,12 @@ export default {
   'learn.nextVar': "Nächste Variante",
   'learn.oppDeviates': "Der Gegner wählte {m} — {name}. Antworte richtig!",
   'learn.varsN': (p) => `${p.n} ${p.n === 1 ? 'Variante' : 'Varianten'}`,
+  'daily.title': "Aufgabe des Tages",
+  'daily.cta': "Heutige Aufgabe lösen",
+  'daily.doneToday': "Heute gelöst",
+  'daily.solved': (p) => `Gelöst! Serie: ${p.n} Tage.`,
+  'daily.streak': (p) => `Serie: ${p.n} Tage`,
+  'daily.rating': (p) => `Wertung: ${p.r}`,
+  'daily.ratingTitle': "Aufgaben-Wertung",
+  'daily.ratingSub': (p) => `Rekord: ${p.best} · gelöst ${p.n}`,
 };

@@ -3,7 +3,9 @@ import { t, initI18n, setLang, getLang, LANGS, FULL_CONTENT_LANGS } from './i18n
 import { renderLearn, renderLesson, renderOpening } from './learn.js';
 import { renderBots, renderBotGame } from './botplay.js';
 import { renderAnalysis } from './analysis-view.js';
-import { renderTraining, renderPuzzleTrack, renderEnPassant, renderCastling, renderEndgame } from './training.js';
+import { renderTraining, renderPuzzleTrack, renderEnPassant, renderCastling, renderEndgame, loadData, dailyPuzzle, dailyStats, puzzleRating } from './training.js';
+import { staticBoardHtml } from './board.js';
+import { METRIKA_ID } from './config.js';
 import { BOTS } from './bots.js';
 
 export const SITE_NAME = 'Fianchetto';
@@ -37,7 +39,30 @@ function renderHome(root) {
       <a class="card" href="#/train"><div class="card-title">🎯 ${t('nav.train')}</div><div class="card-sub">${t('home.f.train')}</div></a>
       <a class="card" href="#/bots"><div class="card-title">🤖 ${t('nav.bots')}</div><div class="card-sub">${t('home.f.bots', { n: BOTS.length, min: BOTS[0].rating, max: BOTS.at(-1).rating })}</div></a>
       <a class="card" href="#/analysis"><div class="card-title">🔍 ${t('nav.analysis')}</div><div class="card-sub">${t('home.f.analysis')}</div></a>
-    </div>`;
+    </div>
+    <section class="panel home-daily" id="homeDaily"></section>`;
+  loadData().then((data) => {
+    const box = root.querySelector('#homeDaily');
+    if (!box) return;
+    const pz = dailyPuzzle(data);
+    const color = pz.f.split(' ')[1];
+    const s = dailyStats();
+    box.innerHTML = `
+      <a class="hd-board" href="#/train/p/daily">${staticBoardHtml(pz.f, color)}</a>
+      <div class="hd-text">
+        <h2>📅 ${t('daily.title')}</h2>
+        <p>${t(color === 'w' ? 'tr.whiteToMove' : 'tr.blackToMove')} ${pz.n ? t('tr.mateTask', { n: pz.n }) : t('tr.tacticTask')}</p>
+        <p class="hd-stats">🔥 ${t('daily.streak', { n: s.streak })} · 🏆 ${t('daily.rating', { r: puzzleRating().r })}</p>
+        <a class="btn primary big" href="#/train/p/daily">${s.solvedToday ? '✓ ' + t('daily.doneToday') : t('daily.cta')}</a>
+      </div>`;
+  });
+}
+
+// Яндекс Метрика — включается, когда в js/config.js указан номер счётчика
+function loadMetrika() {
+  if (!METRIKA_ID) return;
+  (function (m, e, t, r, i, k, a) { m[i] = m[i] || function () { (m[i].a = m[i].a || []).push(arguments); }; m[i].l = 1 * new Date(); k = e.createElement(t); a = e.getElementsByTagName(t)[0]; k.async = 1; k.src = r; a.parentNode.insertBefore(k, a); })(window, document, 'script', 'https://mc.yandex.ru/metrika/tag.js', 'ym');
+  window.ym(METRIKA_ID, 'init', { clickmap: true, trackLinks: true, accurateTrackBounce: true, trackHash: true });
 }
 
 function renderSettings(root) {
@@ -106,6 +131,7 @@ function route() {
 
 (async () => {
   await initI18n();
+  loadMetrika();
   applyTheme();
   document.title = `${SITE_NAME} — ${t('home.tagline')}`;
   renderHeader();
