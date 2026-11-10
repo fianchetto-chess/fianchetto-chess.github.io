@@ -1,6 +1,6 @@
 import { Chess } from '../lib/chess.js';
 import { Board } from './board.js';
-import { BOTS, botMove } from './bots.js';
+import { BOTS, botMove, botAvatar } from './bots.js';
 import { getEngine } from './engine.js';
 import { esc, store, moveListHtml, resultText, playSound, moveSound, toast } from './ui.js';
 import { openAnalysis } from './analysis-view.js';
@@ -13,7 +13,7 @@ export function renderBots(root) {
     <p class="lead">${t('bots.lead', { n: BOTS.length })}</p>
     <div class="cards bots">${BOTS.map((b) => `
       <div class="card bot-card ${b.boss ? 'boss' : ''}" data-id="${b.id}">
-        <div class="bot-avatar">${b.avatar}</div>
+        <div class="bot-avatar">${botAvatar(b)}</div>
         <div class="card-title">${esc(tx(b.name))} ${beaten[b.id] ? '🏆' : ''}</div>
         <div class="bot-rating">${b.rating}</div>
         <div class="card-sub">${esc(tx(b.about))}</div>
@@ -41,7 +41,7 @@ export function renderBotGame(root, id, color) {
     <a href="#/bots" class="back">← ${t('bots.all')}</a>
     <div class="game-layout">
       <div class="board-col">
-        <div class="player top"><span class="pname">${bot.avatar} ${esc(botName)} <span class="prating">(${bot.rating})</span></span><span class="thinking hidden">${t('bots.thinkingShort')}</span></div>
+        <div class="player top"><span class="pname">${botAvatar(bot, 'small')} ${esc(botName)} <span class="prating">(${bot.rating})</span></span><span class="thinking hidden">${t('bots.thinkingShort')}</span></div>
         <div id="bboard"></div>
         <div class="player bottom"><span class="pname">${t('common.you')}</span></div>
       </div>

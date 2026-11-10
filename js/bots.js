@@ -18,7 +18,13 @@ export const BOTS = [
   { id: 'b2250', rating: 2250, avatar: '🥇', name: { en: 'FIDE Master', ru: 'Мастер' }, about: { en: 'A FIDE Master. Rarely makes mistakes.', ru: 'Мастер ФИДЕ. Ошибается редко.' }, elo: 2250, movetime: 800 },
   { id: 'b2500', rating: 2500, avatar: '👑', name: { en: 'Grandmaster', ru: 'Гроссмейстер' }, about: { en: 'A true grandmaster.', ru: 'Настоящий гроссмейстер.' }, elo: 2500, movetime: 1000 },
   { id: 'b2700', rating: 2700, avatar: '💀', name: { en: 'The Dark King', ru: 'Тёмный Король' }, about: { en: 'The final boss. World elite. Beat him and you are a legend.', ru: 'Главный босс. Элита мировых шахмат. Победите его — и вы легенда.' }, elo: 2700, movetime: 1500, boss: true },
+  { id: 'cat', rating: 3200, avatar: '🐱', img: 'img/my-cat.jpg', name: { en: 'My Cat', ru: 'Мой кот', uk: 'Мій кіт', es: 'Mi gato', de: 'Meine Katze', fr: 'Mon chat', pt: 'Meu gato', tr: 'Kedim' }, about: { en: 'just my cat', ru: 'просто мой кот', uk: 'просто мій кіт', es: 'solo mi gato', de: 'einfach meine Katze', fr: 'juste mon chat', pt: 'só o meu gato', tr: 'sadece kedim' }, full: true, movetime: 3000, boss: true },
 ];
+
+// Аватар бота: фото, если есть, иначе эмодзи
+export function botAvatar(b, cls = '') {
+  return b.img ? `<img class="bot-photo ${cls}" src="${b.img}" alt="">` : b.avatar;
+}
 
 function scoreFor(line) {
   if (line.score.mate !== undefined) return line.score.mate > 0 ? 100000 - line.score.mate * 100 : -100000 - line.score.mate * 100;
@@ -52,6 +58,10 @@ export async function botMove(bot, fen, engine) {
         }
       }
     }
+  } else if (bot.full) {
+    // Полная сила Stockfish: без ограничителя, максимальный уровень, больше времени на ход
+    const res = await engine.analyse(fen, { movetime: bot.movetime, options: { UCI_LimitStrength: 'false', 'Skill Level': 20 } });
+    uci = res.bestmove;
   } else {
     const options = { UCI_LimitStrength: 'true', UCI_Elo: Math.max(1320, Math.min(3190, bot.elo)), 'Skill Level': 20 };
     const res = await engine.analyse(fen, { movetime: bot.movetime, options });

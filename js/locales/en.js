@@ -11,12 +11,12 @@ export default {
 
   // home
   'home.tagline': 'Learn. Play. Improve.',
-  'home.lead': "Interactive lessons, endless practice, 13 bots from beginner to grandmaster and move-by-move analysis with Stockfish. Free, right in your browser.",
+  'home.lead': "Interactive lessons, endless practice, 14 bots from beginner to grandmaster and move-by-move analysis with Stockfish. Free, right in your browser.",
   'home.playOnline': 'Play online', 'home.startLearning': 'Start learning',
   'home.f.learn': 'Rules, castling, en passant, tactics and 44 openings with practice mode.',
   'home.f.train': 'Mate with queen, rook, two bishops and bishop + knight against the engine, en passant, castling, promotion, mate in 1.',
   'home.f.play': 'Start at 100. Glicko-2 rating like on lichess; opponents are matched within ±200 at most.',
-  'home.f.bots': '{n} opponents from {min} to {max} — the final boss is "The Dark King".',
+  'home.f.bots': '{n} opponents from {min} to {max} — the final boss is "My Cat".',
   'home.f.analysis': 'Every move gets a symbol — !!, !, !?, ?!, ?, ?? — and a plain-language explanation.',
   'home.stats': 'Online now: {online} · playing: {playing} · looking for a game: {seeking}',
 

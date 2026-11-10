@@ -283,7 +283,7 @@ textarea { width: 100%; background: var(--bg); color: var(--text); border: 1px s
 
 /* ---- задача дня, рейтинг ---- */
 .mini-board{display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);aspect-ratio:1;width:100%;border-radius:6px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.35)}
-.mini-board>div{position:relative;min-width:0;min-height:0}
+.mini-board>div{position:relative;min-width:0;min-height:0;aspect-ratio:1/1;overflow:hidden}
 .mini-board .light{background:var(--light)}
 .mini-board .dark{background:var(--dark)}
 .mini-board img{position:absolute;inset:0;width:100%;height:100%;display:block}
@@ -319,3 +319,7 @@ a.lv-tile:hover{transform:translateY(-2px);border-color:#7fa650}
 .task-strip .ts.done{background:#5d8a3a;border-color:#6f9e48;color:#fff}
 .task-strip .ts.cur{outline:2px solid #e6c15a;outline-offset:1px}
 .task-strip .ts:disabled{cursor:default}
+
+/* фото-аватар бота */
+.bot-photo{width:56px;height:56px;border-radius:50%;object-fit:cover;display:block;margin:0 auto;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.bot-photo.small{width:26px;height:26px;display:inline-block;vertical-align:middle;margin-right:4px}
