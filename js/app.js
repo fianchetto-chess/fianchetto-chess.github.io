@@ -1,4 +1,4 @@
-import { $, store } from './ui.js';
+import { $, store, toast } from './ui.js';
 import { t, initI18n, setLang, getLang, LANGS, FULL_CONTENT_LANGS } from './i18n.js';
 import { renderLearn, renderLesson, renderOpening } from './learn.js';
 import { renderBots, renderBotGame } from './botplay.js';
@@ -83,7 +83,15 @@ function renderSettings(root) {
           </button>`).join('')}</div>
       </div>
       <label class="set-row"><span>🔊 ${t('settings.sound')}</span><input type="checkbox" id="sound" ${sound ? 'checked' : ''}></label>
-    </div>`;
+    </div>
+    <h2>📱 ${t('app.title')}</h2>
+    <div class="panel settings app-box">
+      <p>${t('app.lead')}</p>
+      ${appSettingsHtml()}
+    </div>
+    <p class="muted settings-foot"><a href="privacy.html">${t('app.privacy')}</a> · Fianchetto</p>`;
+  const ib = root.querySelector('#installApp');
+  if (ib) ib.onclick = installApp;
   root.querySelector('#lang').onchange = (e) => setLang(e.target.value);
   root.querySelectorAll('.theme-btn').forEach((b) => b.onclick = () => {
     store.set('theme', b.dataset.theme);
@@ -93,20 +101,85 @@ function renderSettings(root) {
   root.querySelector('#sound').onchange = (e) => store.set('sound', e.target.checked);
 }
 
+// ---------- приложение (PWA) ----------
+let installPrompt = null;
+const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+// Вид «как приложение»: при запуске с иконки, из Google Play или с ?app=1 (для проверки)
+const APP_MODE = (() => {
+  const q = new URLSearchParams(location.search);
+  if (q.get('app') === '0') { try { sessionStorage.removeItem('appMode'); } catch { /* */ } return false; }
+  let on = isStandalone() || q.get('source') === 'app' || q.get('app') === '1';
+  try { if (on) sessionStorage.setItem('appMode', '1'); else on = sessionStorage.getItem('appMode') === '1'; } catch { /* */ }
+  return on;
+})();
+if (APP_MODE) document.documentElement.classList.add('app');
+
+// значки нижней панели (рисуются цветом текста)
+const TAB_ICONS = {
+  home: '<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h4.5v-6h4v6h4.5V10"/>',
+  learn: '<path d="M4 5.5C6.5 4.3 9.5 4.3 12 6c2.5-1.7 5.5-1.7 8-.5v13c-2.5-1.2-5.5-1.2-8 .5-2.5-1.7-5.5-1.7-8-.5z"/><path d="M12 6v13"/>',
+  train: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/>',
+  bots: '<rect x="4.5" y="8" width="15" height="11" rx="3"/><path d="M12 8V4.5"/><circle cx="12" cy="4" r="1" fill="currentColor"/><circle cx="9" cy="13" r="1.3" fill="currentColor"/><circle cx="15" cy="13" r="1.3" fill="currentColor"/><path d="M9.5 16.5h5"/>',
+  analysis: '<circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/>',
+};
+const TABS = [['home', 'nav.home'], ['learn', 'nav.learn'], ['train', 'nav.train'], ['bots', 'nav.bots'], ['analysis', 'nav.analysis']];
+function renderTabbar() {
+  if (!APP_MODE) return;
+  let bar = $('.tabbar');
+  if (!bar) { bar = document.createElement('nav'); bar.className = 'tabbar'; document.body.appendChild(bar); }
+  bar.innerHTML = TABS.map(([id, k]) => `<a href="#/${id === 'home' ? '' : id}" data-tab="${id}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${TAB_ICONS[id]}</svg><span>${t(k)}</span></a>`).join('');
+}
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+function setupApp() {
+  if ('serviceWorker' in navigator) {
+    const reg = () => navigator.serviceWorker.register('sw.js').catch(() => { /* без офлайна */ });
+    if (document.readyState === 'complete') reg(); else window.addEventListener('load', reg);
+  }
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault(); // показываем свою кнопку вместо системной плашки
+    installPrompt = e;
+    updateHeader();
+    if (location.hash === '#/settings') renderSettings(app);
+  });
+  window.addEventListener('appinstalled', () => {
+    installPrompt = null;
+    updateHeader();
+    toast(t('app.installed'));
+  });
+}
+async function installApp() {
+  if (!installPrompt) { location.hash = '#/settings'; return; }
+  installPrompt.prompt();
+  await installPrompt.userChoice.catch(() => null);
+  installPrompt = null;
+  updateHeader();
+}
+function appSettingsHtml() {
+  if (isStandalone()) return `<p>✅ ${t('app.installed')}</p>`;
+  if (installPrompt) return `<button class="btn primary" id="installApp">📲 ${t('app.install')}</button>`;
+  return `<p class="muted">${isIOS() ? t('app.hintIOS') : t('app.hintOther')}</p>`;
+}
+
 function renderHeader() {
   $('.logo').innerHTML = `<img src="pieces/wB.svg" alt="">${SITE_NAME}`;
-  $('nav').innerHTML = [['learn', 'nav.learn'], ['train', 'nav.train'], ['bots', 'nav.bots'], ['analysis', 'nav.analysis']]
+  renderTabbar();
+  $('.topbar nav').innerHTML = [['learn', 'nav.learn'], ['train', 'nav.train'], ['bots', 'nav.bots'], ['analysis', 'nav.analysis']]
     .map(([h, k]) => `<a href="#/${h}">${t(k)}</a>`).join('');
 }
 
 function updateHeader() {
-  $('#userbox').innerHTML = `<a class="btn small icon" href="#/settings" title="${t('settings.title')}">⚙ ${t('settings.title')}</a>`;
+  const inst = installPrompt && !isStandalone() && !APP_MODE ? `<button class="btn small primary" id="installBtn">📲 ${t('app.installShort')}</button> ` : '';
+  $('#userbox').innerHTML = `${inst}<a class="btn small icon" href="#/settings" title="${t('settings.title')}">⚙<span class="lbl"> ${t('settings.title')}</span></a>`;
+  const b = $('#installBtn');
+  if (b) b.onclick = installApp;
 }
 
 function route() {
   if (app._cleanup) { app._cleanup(); app._cleanup = null; }
   const parts = (location.hash.replace(/^#\/?/, '') || 'home').split('/').map(decodeURIComponent);
-  document.querySelectorAll('nav a').forEach((a) => a.classList.toggle('active', a.getAttribute('href') === `#/${parts[0]}`));
+  document.querySelectorAll('.topbar nav a').forEach((a) => a.classList.toggle('active', a.getAttribute('href') === `#/${parts[0]}`));
+  document.querySelectorAll('.tabbar a').forEach((a) => a.classList.toggle('active', a.dataset.tab === parts[0]));
   window.scrollTo(0, 0);
   switch (parts[0]) {
     case 'learn':
@@ -132,6 +205,7 @@ function route() {
 (async () => {
   await initI18n();
   loadMetrika();
+  setupApp();
   applyTheme();
   document.title = `${SITE_NAME} — ${t('home.tagline')}`;
   renderHeader();

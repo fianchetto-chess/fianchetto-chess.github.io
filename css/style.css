@@ -323,3 +323,71 @@ a.lv-tile:hover{transform:translateY(-2px);border-color:#7fa650}
 /* фото-аватар бота */
 .bot-photo{width:56px;height:56px;border-radius:50%;object-fit:cover;display:block;margin:0 auto;box-shadow:0 2px 8px rgba(0,0,0,.4)}
 .bot-photo.small{width:26px;height:26px;display:inline-block;vertical-align:middle;margin-right:4px}
+
+/* ---------- телефон в браузере: компактная шапка ---------- */
+@media (max-width: 640px) {
+  .topbar { flex-wrap: nowrap; gap: 10px; padding: 8px 12px; }
+  .topbar nav { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .topbar nav::-webkit-scrollbar { display: none; }
+  .topbar nav a { white-space: nowrap; padding: 6px 9px; }
+  .logo { font-size: 0; gap: 0; } .logo img { width: 28px; height: 28px; }
+  #userbox .lbl { display: none; }
+  main { padding: 12px; }
+}
+
+/* ---------- вид «как приложение» (запуск с иконки / из Google Play) ---------- */
+.tabbar { display: none; }
+html.app { -webkit-tap-highlight-color: transparent; }
+html.app body { overscroll-behavior-y: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+html.app input, html.app select, html.app textarea { -webkit-user-select: text; user-select: text; }
+html.app #installBtn { display: none; }
+@media (max-width: 900px) {
+  html.app .topbar { flex-wrap: nowrap; gap: 10px; padding: calc(env(safe-area-inset-top) + 8px) 14px 8px; }
+  html.app .topbar nav { display: none; }
+  html.app .logo { font-size: 18px; gap: 6px; } html.app .logo img { width: 26px; height: 26px; }
+  html.app #userbox { margin-left: auto; }
+  html.app #userbox .lbl { display: none; }
+  html.app #userbox .btn.icon { font-size: 20px; min-height: 40px; min-width: 40px; justify-content: center; border: 0; background: transparent; }
+  html.app main { padding: 12px 10px calc(78px + env(safe-area-inset-bottom)); }
+  html.app .tabbar { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    background: rgba(34, 32, 28, .97); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid var(--line); padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  html.app .tabbar a { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    padding: 8px 0 7px; color: var(--muted); font-size: 11px; line-height: 1.1; text-decoration: none; }
+  html.app .tabbar a svg { width: 25px; height: 25px; }
+  html.app .tabbar a.active { color: var(--accent); }
+  html.app .tabbar a:active { transform: scale(.94); }
+  html.app .toast { bottom: calc(84px + env(safe-area-inset-bottom)); }
+  html.app h1 { font-size: 24px; margin: 4px 0 10px; }
+  html.app .hero { padding: 8px 0 4px; }
+  html.app .hero h1 { font-size: 34px; margin-bottom: 4px; }
+  html.app .hero .lead { font-size: 15px; }
+  html.app .hero .btn-row { flex-direction: column; align-items: stretch; }
+  html.app .hero .btn-row .btn { justify-content: center; }
+  html.app .btn { min-height: 44px; padding: 10px 16px; border-radius: 10px; }
+  html.app .btn.small { min-height: 34px; padding: 6px 12px; }
+  html.app .btn-row .btn, html.app .controls .btn { flex: 1 1 auto; justify-content: center; }
+  html.app .panel, html.app .card { border-radius: 14px; }
+  html.app .cards { grid-template-columns: 1fr; gap: 10px; }
+  html.app .features { display: none; }
+  html.app .hero-pieces { display: none; }
+  html.app .back { padding: 6px 0; margin-bottom: 6px; }
+  html.app .game-layout { gap: 12px; }
+  html.app .home-daily { gap: 16px; }
+  html.app .home-daily .hd-board { flex-basis: 100%; max-width: 100%; width: 100%; }
+  html.app .home-daily .hd-text .btn { width: 100%; justify-content: center; }
+  html.app .levels { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  html.app .task-strip .ts { padding: 7px 0; font-size: 13px; }
+  /* боты — компактные строки: аватар слева, имя и рейтинг справа, кнопки снизу */
+  html.app .bot-card { display: grid; grid-template-columns: 52px 1fr auto; grid-template-areas: "ava name rate" "ava sub sub" "btns btns btns";
+    align-items: center; column-gap: 12px; row-gap: 2px; text-align: left; padding: 12px 14px; grid-column: auto; }
+  html.app .bot-card .bot-avatar { grid-area: ava; font-size: 38px; line-height: 1; text-align: center; }
+  html.app .bot-card .bot-photo { width: 46px; height: 46px; }
+  html.app .bot-card .card-title { grid-area: name; margin: 0; }
+  html.app .bot-card .bot-rating { grid-area: rate; font-size: 18px; }
+  html.app .bot-card .card-sub { grid-area: sub; font-size: 13px; margin: 0; }
+  html.app .bot-card .btn-row { grid-area: btns; margin: 10px 0 0; flex-wrap: nowrap; }
+  html.app .bot-card .btn-row .btn { flex: 1; min-height: 38px; padding: 6px 4px; }
+}
+
+.settings-foot { margin-top: 18px; text-align: center; }

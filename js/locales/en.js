@@ -11,12 +11,12 @@ export default {
 
   // home
   'home.tagline': 'Learn. Play. Improve.',
-  'home.lead': "Interactive lessons, endless practice, 14 bots from beginner to grandmaster and move-by-move analysis with Stockfish. Free, right in your browser.",
+  'home.lead': "Interactive lessons, practice with 10 levels, 14 bots from beginner to grandmaster and move-by-move analysis with Stockfish. Free, right in your browser.",
   'home.playOnline': 'Play online', 'home.startLearning': 'Start learning',
   'home.f.learn': 'Rules, castling, en passant, tactics and 44 openings with practice mode.',
   'home.f.train': 'Mate with queen, rook, two bishops and bishop + knight against the engine, en passant, castling, promotion, mate in 1.',
   'home.f.play': 'Start at 100. Glicko-2 rating like on lichess; opponents are matched within ±200 at most.',
-  'home.f.bots': '{n} opponents from {min} to {max} — the final boss is "My Cat".',
+  'home.f.bots': '{n} opponents from {min} to {max} — the final boss is "The Machine".',
   'home.f.analysis': 'Every move gets a symbol — !!, !, !?, ?!, ?, ?? — and a plain-language explanation.',
   'home.stats': 'Online now: {online} · playing: {playing} · looking for a game: {seeking}',
 
@@ -224,4 +224,13 @@ export default {
   'lv.solutionShown': "Here is the solution. The puzzle is not counted — press “Restart” and solve it yourself, or go to the next one.",
   'tr.lead': "Every training has 10 levels of 20 puzzles, from easy to hard. Pick any level.",
   'lv.lead': (p) => `${p.n} levels of ${p.per} puzzles, each harder than the last. Start with any level.`,
+  'app.title': "App",
+  'app.install': "Install the Fianchetto app",
+  'app.installShort': "Install",
+  'app.installed': "The app is installed — open it from your home screen.",
+  'app.lead': "Install Fianchetto as an app: an icon on your home screen, a full-screen window and play without internet.",
+  'app.hintIOS': "On iPhone/iPad: open the site in Safari, tap the Share button (square with an arrow) and choose “Add to Home Screen”.",
+  'app.hintOther': "On Android: open the browser menu ⋮ and choose “Install app” or “Add to Home screen”. On a computer: click the install icon at the right of the address bar (Chrome, Edge, Yandex Browser).",
+  'nav.home': 'Home',
+  'app.privacy': 'Privacy policy',
 };
